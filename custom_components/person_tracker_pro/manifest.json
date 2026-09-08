@@ -1,0 +1,11 @@
+{
+  "domain": "person_tracker_pro",
+  "name": "Person Tracker PRO",
+  "codeowners": ["@person-tracker-pro"],
+  "config_flow": true,
+  "documentation": "https://github.com/person-tracker-pro/person-tracker-pro",
+  "iot_class": "local_push",
+  "integration_type": "hub",
+  "requirements": [],
+  "version": "0.1.0"
+}

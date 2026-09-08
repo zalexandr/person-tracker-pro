@@ -1,0 +1,22 @@
+request_location:
+  name: Request location
+  description: Refresh the configured location source and recalculate presence.
+
+recalculate_presence:
+  name: Recalculate presence
+  description: Recalculate the current presence state from the latest location.
+
+set_privacy_mode:
+  name: Set privacy mode
+  description: Reserved service for runtime privacy control.
+  fields:
+    mode:
+      name: Mode
+      description: Privacy mode.
+      required: true
+      selector:
+        select:
+          options:
+            - full
+            - zone_only
+            - private
