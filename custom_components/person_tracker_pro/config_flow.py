@@ -14,10 +14,10 @@ from .const import (
     CONF_EXIT_CONFIRMATION, CONF_HOME_ZONE, CONF_MAX_ACCURACY,
     CONF_MAX_JUMP_METERS, CONF_MAX_SPEED_KMH, CONF_OFFLINE_TIMEOUT,
     CONF_PERSON_ENTITY, CONF_PRIVACY_MODE, CONF_SOURCE_ENTITIES,
-    CONF_STALE_TIMEOUT, DEFAULT_DWELL_TIME, DEFAULT_ENTER_CONFIRMATION,
-    DEFAULT_EXIT_CONFIRMATION, DEFAULT_HOME_ZONE, DEFAULT_MAX_ACCURACY,
-    DEFAULT_MAX_JUMP_METERS, DEFAULT_MAX_SPEED_KMH, DEFAULT_OFFLINE_TIMEOUT,
-    DEFAULT_STALE_TIMEOUT, DOMAIN, PrivacyMode,
+    CONF_SOURCE_ENTITY, CONF_STALE_TIMEOUT, DEFAULT_DWELL_TIME,
+    DEFAULT_ENTER_CONFIRMATION, DEFAULT_EXIT_CONFIRMATION, DEFAULT_HOME_ZONE,
+    DEFAULT_MAX_ACCURACY, DEFAULT_MAX_JUMP_METERS, DEFAULT_MAX_SPEED_KMH,
+    DEFAULT_OFFLINE_TIMEOUT, DEFAULT_STALE_TIMEOUT, DOMAIN, PrivacyMode,
 )
 
 class PersonTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -29,9 +29,7 @@ class PersonTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             await self.async_set_unique_id(user_input[CONF_PERSON_ENTITY])
             self._abort_if_unique_id_configured()
-            return self.async_create_entry(
-                title=user_input[CONF_PERSON_ENTITY], data=user_input
-            )
+            return self.async_create_entry(title=user_input[CONF_PERSON_ENTITY], data=user_input)
         schema = vol.Schema({
             vol.Required(CONF_PERSON_ENTITY): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="person")
@@ -72,3 +70,13 @@ class PersonTrackerOptionsFlow(config_entries.OptionsFlow):
             vol.Required(CONF_PRIVACY_MODE, default=current.get(CONF_PRIVACY_MODE, PrivacyMode.FULL)): vol.In([m.value for m in PrivacyMode]),
         })
         return self.async_show_form(step_id="init", data_schema=schema)
+
+async def async_migrate_entry(hass, config_entry: config_entries.ConfigEntry) -> bool:
+    """Migrate v1 single-source entries to the v2 multi-source format."""
+    if config_entry.version < 2:
+        data = dict(config_entry.data)
+        source = data.pop(CONF_SOURCE_ENTITY, None)
+        if source:
+            data[CONF_SOURCE_ENTITIES] = [source]
+        hass.config_entries.async_update_entry(config_entry, data=data, version=2)
+    return True
