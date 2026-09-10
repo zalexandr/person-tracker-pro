@@ -1,6 +1,28 @@
 {
   "title": "Person Tracker PRO",
-  "config": {"step": {"user": {"title": "Налаштування Person Tracker PRO", "description": "Пов’яжіть особу Home Assistant з одним або кількома джерелами місцезнаходження.", "data": {"person_entity": "Особа", "source_entities": "Джерела місцезнаходження", "battery_entity": "Датчик батареї"}}}, "abort": {"already_configured": "Цю особу вже налаштовано."}},
-  "options": {"step": {"init": {"title": "Налаштування Person Tracker PRO", "data": {"max_accuracy": "Максимальна точність GPS (м)", "max_jump_meters": "Максимальний стрибок GPS (м)", "max_speed_kmh": "Максимальна допустима швидкість (км/год)", "enter_confirmation": "Підтвердження входу в зону (с)", "exit_confirmation": "Підтвердження виходу із зони (с)", "stale_timeout": "Тайм-аут застарівання (с)", "offline_timeout": "Тайм-аут офлайн (с)", "dwell_time": "Мінімальний час перебування (с)", "home_zone": "Домашня зона", "privacy_mode": "Режим приватності"}}}},
-  "entity": {"sensor": {"presence_confidence": {"name": "Впевненість присутності"}, "gps_accuracy": {"name": "Точність GPS"}, "speed": {"name": "Швидкість"}, "active_sources": {"name": "Активні джерела"}, "rejected_gps_samples": {"name": "Відхилені GPS-точки"}}, "binary_sensor": {"location_stale": {"name": "Місцезнаходження застаріле"}, "location_offline": {"name": "Місцезнаходження офлайн"}, "moving": {"name": "У русі"}}, "device_tracker": {"location": {"name": "Місцезнаходження"}}}
+  "config": {
+    "step": {
+      "user": {
+        "title": "Налаштування Person Tracker PRO",
+        "description": "Пов’яжіть особу Home Assistant з одним або кількома джерелами місцезнаходження.",
+        "data": {"person_entity": "Особа", "source_entities": "Джерела місцезнаходження", "battery_entity": "Датчик батареї"}
+      },
+      "reconfigure": {
+        "title": "Повторне налаштування Person Tracker PRO",
+        "description": "Змініть особу або джерела місцезнаходження, які використовує трекер.",
+        "data": {"person_entity": "Особа", "source_entities": "Джерела місцезнаходження", "battery_entity": "Датчик батареї"}
+      }
+    },
+    "abort": {"already_configured": "Цю особу вже налаштовано."}
+  },
+  "options": {
+    "step": {"init": {"title": "Налаштування Person Tracker PRO", "data": {
+      "max_accuracy": "Максимальна точність GPS (м)", "max_jump_meters": "Максимальний стрибок GPS (м)", "max_speed_kmh": "Максимальна допустима швидкість (км/год)", "enter_confirmation": "Підтвердження входу в зону (с)", "exit_confirmation": "Підтвердження виходу із зони (с)", "stale_timeout": "Тайм-аут застарівання (с)", "offline_timeout": "Тайм-аут офлайн (с)", "dwell_time": "Мінімальний час перебування (с)", "home_zone": "Домашня зона", "privacy_mode": "Режим приватності"
+    }}}
+  },
+  "entity": {
+    "sensor": {"presence_confidence": {"name": "Впевненість присутності"}, "gps_accuracy": {"name": "Точність GPS"}, "speed": {"name": "Швидкість"}, "active_sources": {"name": "Активні джерела"}, "rejected_gps_samples": {"name": "Відхилені GPS-точки"}},
+    "binary_sensor": {"location_stale": {"name": "Місцезнаходження застаріле"}, "location_offline": {"name": "Місцезнаходження офлайн"}, "moving": {"name": "У русі"}},
+    "device_tracker": {"location": {"name": "Місцезнаходження"}}
+  }
 }
