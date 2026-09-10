@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    CONF_PRIVACY_MODE,
     DOMAIN,
     PLATFORMS,
     SERVICE_RECALCULATE,
@@ -16,6 +17,7 @@ from .const import (
     PrivacyMode,
 )
 from .coordinator import PersonTrackerCoordinator
+
 
 type PersonTrackerConfigEntry = ConfigEntry[PersonTrackerCoordinator]
 
@@ -37,19 +39,24 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         for current_id, coordinator in hass.data.get(DOMAIN, {}).items():
             if entry_id and current_id != entry_id:
                 continue
-            yield coordinator
+            yield current_id, coordinator
 
     async def request_location(call: ServiceCall) -> None:
-        async for coordinator in _targets(call):
+        async for _, coordinator in _targets(call):
             await coordinator.async_request_location()
 
     async def recalculate(call: ServiceCall) -> None:
-        async for coordinator in _targets(call):
+        async for _, coordinator in _targets(call):
             await coordinator.async_recalculate()
 
     async def set_privacy(call: ServiceCall) -> None:
-        async for coordinator in _targets(call):
-            coordinator.config["privacy_mode"] = call.data["mode"]
+        mode = call.data["mode"]
+        for entry_id, coordinator in _targets(call):
+            coordinator.config[CONF_PRIVACY_MODE] = mode
+            entry = hass.config_entries.async_get_entry(entry_id)
+            if entry is not None:
+                options = {**entry.options, CONF_PRIVACY_MODE: mode}
+                hass.config_entries.async_update_entry(entry, options=options)
             await coordinator.async_refresh()
 
     hass.services.async_register(
