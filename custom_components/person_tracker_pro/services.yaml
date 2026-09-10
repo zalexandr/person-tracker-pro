@@ -1,6 +1,6 @@
 request_location:
   name: Request location
-  description: Refresh all configured location sources and recalculate presence.
+  description: Re-read all configured location sources and refresh the fused state.
   fields:
     entry_id:
       name: Config entry
@@ -11,17 +11,18 @@ request_location:
 
 recalculate_presence:
   name: Recalculate presence
-  description: Recalculate the fused presence state immediately.
+  description: Recalculate the fused presence state immediately from current source states.
   fields:
     entry_id:
       name: Config entry
+      description: Optional Person Tracker PRO config entry ID.
       required: false
       selector:
         text:
 
 set_privacy_mode:
   name: Set privacy mode
-  description: Change the runtime location privacy mode.
+  description: Change and persist the runtime location privacy mode.
   fields:
     mode:
       name: Mode
@@ -34,6 +35,7 @@ set_privacy_mode:
             - private
     entry_id:
       name: Config entry
+      description: Optional Person Tracker PRO config entry ID.
       required: false
       selector:
         text:
