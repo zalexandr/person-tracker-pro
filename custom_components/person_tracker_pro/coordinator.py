@@ -11,21 +11,11 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .confidence import calculate_confidence
 from .const import (
-    CONF_HOME_ZONE,
-    CONF_MAX_ACCURACY,
-    CONF_MAX_JUMP_METERS,
-    CONF_MAX_SPEED_KMH,
-    CONF_OFFLINE_TIMEOUT,
-    CONF_SOURCE_ENTITIES,
-    CONF_STALE_TIMEOUT,
-    DEFAULT_HOME_ZONE,
-    DEFAULT_MAX_ACCURACY,
-    DEFAULT_MAX_JUMP_METERS,
-    DEFAULT_MAX_SPEED_KMH,
-    DEFAULT_OFFLINE_TIMEOUT,
-    DEFAULT_STALE_TIMEOUT,
-    DOMAIN,
-    PrivacyMode,
+    CONF_HOME_ZONE, CONF_MAX_ACCURACY, CONF_MAX_JUMP_METERS, CONF_MAX_SPEED_KMH,
+    CONF_OFFLINE_TIMEOUT, CONF_SOURCE_ENTITIES, CONF_STALE_TIMEOUT,
+    DEFAULT_HOME_ZONE, DEFAULT_MAX_ACCURACY, DEFAULT_MAX_JUMP_METERS,
+    DEFAULT_MAX_SPEED_KMH, DEFAULT_OFFLINE_TIMEOUT, DEFAULT_STALE_TIMEOUT,
+    DOMAIN, PrivacyMode,
 )
 from .gps_filter import FilterConfig, accept_sample, haversine_meters
 from .models import LocationSample, LocationState
@@ -92,8 +82,7 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 accuracy = float(state.attributes.get("gps_accuracy", state.attributes.get("accuracy", 9999)))
                 sample = LocationSample(
                     float(lat), float(lon), accuracy, state.last_updated, entity_id,
-                    _numeric(state.attributes.get("speed")),
-                    _numeric(state.attributes.get("course")),
+                    _numeric(state.attributes.get("speed")), _numeric(state.attributes.get("course")),
                 )
             except (TypeError, ValueError):
                 status[entity_id] = "invalid_location"
@@ -118,9 +107,7 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 status[sample.source] = "rejected"
 
         if accepted:
-            # Location freshness is the primary source-selection signal. Accuracy
-            # is only a deterministic tie-breaker for identical timestamps.
-            sample = max(accepted, key=lambda item: (item.timestamp, -item.accuracy))
+            sample = select_freshest_sample(accepted)
             self.previous = sample
         elif self.previous is not None:
             sample = self.previous
@@ -147,13 +134,11 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         return LocationState(
             sample=sample,
             confidence=calculate_confidence(sample, now=now, corroborated=len(accepted) > 1),
-            movement=classify_speed(sample.speed_kmh),
-            zone=zone,
+            movement=classify_speed(sample.speed_kmh), zone=zone,
             distance_home=distance_home,
             stale=age >= float(self.config[CONF_STALE_TIMEOUT]),
             offline=age >= float(self.config[CONF_OFFLINE_TIMEOUT]),
-            source_count=len(accepted),
-            rejected_samples=self.rejected_samples,
+            source_count=len(accepted), rejected_samples=self.rejected_samples,
             source_status=status,
         )
 
@@ -164,6 +149,13 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
     async def async_recalculate(self) -> None:
         """Recalculate presence immediately from current source states."""
         await self.async_refresh()
+
+
+def select_freshest_sample(samples: list[LocationSample]) -> LocationSample:
+    """Select the newest fix; use accuracy only when timestamps are identical."""
+    if not samples:
+        raise ValueError("At least one location sample is required")
+    return max(samples, key=lambda item: (item.timestamp, -item.accuracy))
 
 
 def _numeric(value: Any) -> float | None:
