@@ -1,6 +1,28 @@
 {
   "title": "Person Tracker PRO",
-  "config": {"step": {"user": {"title": "Konfiguracja Person Tracker PRO", "description": "Połącz osobę Home Assistant z jednym lub wieloma źródłami lokalizacji.", "data": {"person_entity": "Osoba", "source_entities": "Źródła lokalizacji", "battery_entity": "Czujnik baterii"}}}, "abort": {"already_configured": "Ta osoba jest już skonfigurowana."}},
-  "options": {"step": {"init": {"title": "Opcje Person Tracker PRO", "data": {"max_accuracy": "Maksymalna dokładność GPS (m)", "max_jump_meters": "Maksymalny skok GPS (m)", "max_speed_kmh": "Maksymalna dopuszczalna prędkość (km/h)", "enter_confirmation": "Potwierdzenie wejścia do strefy (s)", "exit_confirmation": "Potwierdzenie wyjścia ze strefy (s)", "stale_timeout": "Limit przestarzałej lokalizacji (s)", "offline_timeout": "Limit offline (s)", "dwell_time": "Minimalny czas pobytu (s)", "home_zone": "Strefa domowa", "privacy_mode": "Tryb prywatności"}}}},
-  "entity": {"sensor": {"presence_confidence": {"name": "Pewność obecności"}, "gps_accuracy": {"name": "Dokładność GPS"}, "speed": {"name": "Prędkość"}, "active_sources": {"name": "Aktywne źródła"}, "rejected_gps_samples": {"name": "Odrzucone próbki GPS"}}, "binary_sensor": {"location_stale": {"name": "Lokalizacja nieaktualna"}, "location_offline": {"name": "Lokalizacja offline"}, "moving": {"name": "W ruchu"}}, "device_tracker": {"location": {"name": "Lokalizacja"}}}
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja Person Tracker PRO",
+        "description": "Połącz osobę Home Assistant z jednym lub wieloma źródłami lokalizacji.",
+        "data": {"person_entity": "Osoba", "source_entities": "Źródła lokalizacji", "battery_entity": "Czujnik baterii"}
+      },
+      "reconfigure": {
+        "title": "Ponowna konfiguracja Person Tracker PRO",
+        "description": "Zmień osobę lub źródła lokalizacji używane przez tracker.",
+        "data": {"person_entity": "Osoba", "source_entities": "Źródła lokalizacji", "battery_entity": "Czujnik baterii"}
+      }
+    },
+    "abort": {"already_configured": "Ta osoba jest już skonfigurowana."}
+  },
+  "options": {
+    "step": {"init": {"title": "Opcje Person Tracker PRO", "data": {
+      "max_accuracy": "Maksymalna dokładność GPS (m)", "max_jump_meters": "Maksymalny skok GPS (m)", "max_speed_kmh": "Maksymalna dopuszczalna prędkość (km/h)", "enter_confirmation": "Potwierdzenie wejścia do strefy (s)", "exit_confirmation": "Potwierdzenie wyjścia ze strefy (s)", "stale_timeout": "Limit przestarzałej lokalizacji (s)", "offline_timeout": "Limit offline (s)", "dwell_time": "Minimalny czas pobytu (s)", "home_zone": "Strefa domowa", "privacy_mode": "Tryb prywatności"
+    }}}
+  },
+  "entity": {
+    "sensor": {"presence_confidence": {"name": "Pewność obecności"}, "gps_accuracy": {"name": "Dokładność GPS"}, "speed": {"name": "Prędkość"}, "active_sources": {"name": "Aktywne źródła"}, "rejected_gps_samples": {"name": "Odrzucone próbki GPS"}},
+    "binary_sensor": {"location_stale": {"name": "Lokalizacja nieaktualna"}, "location_offline": {"name": "Lokalizacja offline"}, "moving": {"name": "W ruchu"}},
+    "device_tracker": {"location": {"name": "Lokalizacja"}}
+  }
 }
