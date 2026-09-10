@@ -1,5 +1,4 @@
 from homeassistant import config_entries
-from homeassistant.const import SOURCE_RECONFIGURE, SOURCE_USER
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.person_tracker_pro.config_flow import async_migrate_entry
@@ -14,7 +13,7 @@ from custom_components.person_tracker_pro.const import (
 async def test_user_flow_creates_entry(hass, enable_custom_integrations):
     """The user flow creates a unique multi-source config entry."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
     assert result["type"] == config_entries.FlowResultType.FORM
 
@@ -48,7 +47,10 @@ async def test_reconfigure_updates_existing_entry(hass, enable_custom_integratio
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN,
-        context={"source": SOURCE_RECONFIGURE, "entry_id": entry.entry_id},
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
     )
     assert result["type"] == config_entries.FlowResultType.FORM
 
