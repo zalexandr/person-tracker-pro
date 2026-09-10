@@ -1,4 +1,5 @@
 from homeassistant import config_entries
+from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.person_tracker_pro.config_flow import async_migrate_entry
@@ -15,7 +16,7 @@ async def test_user_flow_creates_entry(hass, enable_custom_integrations):
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
-    assert result["type"] == config_entries.FlowResultType.FORM
+    assert result["type"] == FlowResultType.FORM
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -25,7 +26,7 @@ async def test_user_flow_creates_entry(hass, enable_custom_integrations):
         },
     )
 
-    assert result["type"] == config_entries.FlowResultType.CREATE_ENTRY
+    assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_PERSON_ENTITY] == "person.alex"
     assert result["data"][CONF_SOURCE_ENTITIES] == [
         "device_tracker.phone",
@@ -52,7 +53,7 @@ async def test_reconfigure_updates_existing_entry(hass, enable_custom_integratio
             "entry_id": entry.entry_id,
         },
     )
-    assert result["type"] == config_entries.FlowResultType.FORM
+    assert result["type"] == FlowResultType.FORM
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -62,7 +63,7 @@ async def test_reconfigure_updates_existing_entry(hass, enable_custom_integratio
         },
     )
 
-    assert result["type"] == config_entries.FlowResultType.ABORT
+    assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
     assert entry.data[CONF_SOURCE_ENTITIES] == [
         "device_tracker.phone",
