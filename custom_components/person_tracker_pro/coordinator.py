@@ -49,8 +49,6 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             "privacy_mode": PrivacyMode.FULL.value,
             **config,
         }
-        # Keep compatibility with pre-v0.2.1 entries even if migration was
-        # skipped by a test fixture or an interrupted upgrade.
         if not self.config.get(CONF_SOURCE_ENTITIES) and self.config.get("source_entity"):
             self.config[CONF_SOURCE_ENTITIES] = [self.config["source_entity"]]
         self.previous: LocationSample | None = None
@@ -91,17 +89,9 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 status[entity_id] = "no_location"
                 continue
             try:
-                accuracy = float(
-                    state.attributes.get(
-                        "gps_accuracy", state.attributes.get("accuracy", 9999)
-                    )
-                )
+                accuracy = float(state.attributes.get("gps_accuracy", state.attributes.get("accuracy", 9999)))
                 sample = LocationSample(
-                    float(lat),
-                    float(lon),
-                    accuracy,
-                    state.last_updated,
-                    entity_id,
+                    float(lat), float(lon), accuracy, state.last_updated, entity_id,
                     _numeric(state.attributes.get("speed")),
                     _numeric(state.attributes.get("course")),
                 )
@@ -128,23 +118,14 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 status[sample.source] = "rejected"
 
         if accepted:
-            newest = max(accepted, key=lambda item: item.timestamp)
-            candidates = [
-                sample
-                for sample in accepted
-                if abs((newest.timestamp - sample.timestamp).total_seconds()) <= 60
-            ]
-            # Freshness is primary. Accuracy breaks ties between contemporaneous
-            # sources, preventing a stale high-quality GPS fix from winning.
-            sample = min(candidates, key=lambda item: item.accuracy)
+            # Location freshness is the primary source-selection signal. Accuracy
+            # is only a deterministic tie-breaker for identical timestamps.
+            sample = max(accepted, key=lambda item: (item.timestamp, -item.accuracy))
             self.previous = sample
         elif self.previous is not None:
             sample = self.previous
         else:
-            return LocationState(
-                source_status=status,
-                rejected_samples=self.rejected_samples,
-            )
+            return LocationState(source_status=status, rejected_samples=self.rejected_samples)
 
         now = datetime.now(timezone.utc)
         age = max(0.0, (now - sample.timestamp).total_seconds())
@@ -152,10 +133,8 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         distance_home = None
         if home and home.attributes.get("latitude") is not None and home.attributes.get("longitude") is not None:
             distance_home = haversine_meters(
-                sample.latitude,
-                sample.longitude,
-                float(home.attributes["latitude"]),
-                float(home.attributes["longitude"]),
+                sample.latitude, sample.longitude,
+                float(home.attributes["latitude"]), float(home.attributes["longitude"]),
             )
 
         zone = None
@@ -167,9 +146,7 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
 
         return LocationState(
             sample=sample,
-            confidence=calculate_confidence(
-                sample, now=now, corroborated=len(accepted) > 1
-            ),
+            confidence=calculate_confidence(sample, now=now, corroborated=len(accepted) > 1),
             movement=classify_speed(sample.speed_kmh),
             zone=zone,
             distance_home=distance_home,
@@ -181,11 +158,11 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         )
 
     async def async_request_location(self) -> None:
-        """Refresh the fused state."""
+        """Refresh the fused state from current Home Assistant source states."""
         await self.async_refresh()
 
     async def async_recalculate(self) -> None:
-        """Recalculate presence immediately."""
+        """Recalculate presence immediately from current source states."""
         await self.async_refresh()
 
 
