@@ -1,6 +1,62 @@
 {
   "title": "Person Tracker PRO",
-  "config": {"step": {"user": {"title": "Set up Person Tracker PRO", "description": "Connect a Home Assistant person with one or more location sources.", "data": {"person_entity": "Person", "source_entities": "Location sources", "battery_entity": "Battery sensor"}}}, "abort": {"already_configured": "This person is already configured."}},
-  "options": {"step": {"init": {"title": "Person Tracker PRO options", "data": {"max_accuracy": "Maximum GPS accuracy (m)", "max_jump_meters": "Maximum GPS jump (m)", "max_speed_kmh": "Maximum plausible speed (km/h)", "enter_confirmation": "Zone entry confirmation (s)", "exit_confirmation": "Zone exit confirmation (s)", "stale_timeout": "Stale timeout (s)", "offline_timeout": "Offline timeout (s)", "dwell_time": "Minimum dwell time (s)", "home_zone": "Home zone", "privacy_mode": "Privacy mode"}}}},
-  "entity": {"sensor": {"presence_confidence": {"name": "Presence confidence"}, "gps_accuracy": {"name": "GPS accuracy"}, "speed": {"name": "Speed"}, "active_sources": {"name": "Active sources"}, "rejected_gps_samples": {"name": "Rejected GPS samples"}}, "binary_sensor": {"location_stale": {"name": "Location stale"}, "location_offline": {"name": "Location offline"}, "moving": {"name": "Moving"}}, "device_tracker": {"location": {"name": "Location"}}}
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Person Tracker PRO",
+        "description": "Connect a Home Assistant person with one or more location sources.",
+        "data": {
+          "person_entity": "Person",
+          "source_entities": "Location sources",
+          "battery_entity": "Battery sensor"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Person Tracker PRO",
+        "description": "Change the person or location sources used by this tracker.",
+        "data": {
+          "person_entity": "Person",
+          "source_entities": "Location sources",
+          "battery_entity": "Battery sensor"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This person is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Person Tracker PRO options",
+        "data": {
+          "max_accuracy": "Maximum GPS accuracy (m)",
+          "max_jump_meters": "Maximum GPS jump (m)",
+          "max_speed_kmh": "Maximum plausible speed (km/h)",
+          "enter_confirmation": "Zone entry confirmation (s)",
+          "exit_confirmation": "Zone exit confirmation (s)",
+          "stale_timeout": "Stale timeout (s)",
+          "offline_timeout": "Offline timeout (s)",
+          "dwell_time": "Minimum dwell time (s)",
+          "home_zone": "Home zone",
+          "privacy_mode": "Privacy mode"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "presence_confidence": {"name": "Presence confidence"},
+      "gps_accuracy": {"name": "GPS accuracy"},
+      "speed": {"name": "Speed"},
+      "active_sources": {"name": "Active sources"},
+      "rejected_gps_samples": {"name": "Rejected GPS samples"}
+    },
+    "binary_sensor": {
+      "location_stale": {"name": "Location stale"},
+      "location_offline": {"name": "Location offline"},
+      "moving": {"name": "Moving"}
+    },
+    "device_tracker": {"location": {"name": "Location"}}
+  }
 }
