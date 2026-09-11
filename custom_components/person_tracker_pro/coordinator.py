@@ -11,6 +11,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .confidence import calculate_confidence
 from .const import (
+    CONF_DWELL_TIME,
+    CONF_ENTER_CONFIRMATION,
+    CONF_EXIT_CONFIRMATION,
     CONF_HOME_ZONE,
     CONF_MAX_ACCURACY,
     CONF_MAX_JUMP_METERS,
@@ -18,6 +21,9 @@ from .const import (
     CONF_OFFLINE_TIMEOUT,
     CONF_SOURCE_ENTITIES,
     CONF_STALE_TIMEOUT,
+    DEFAULT_DWELL_TIME,
+    DEFAULT_ENTER_CONFIRMATION,
+    DEFAULT_EXIT_CONFIRMATION,
     DEFAULT_HOME_ZONE,
     DEFAULT_MAX_ACCURACY,
     DEFAULT_MAX_JUMP_METERS,
@@ -25,6 +31,13 @@ from .const import (
     DEFAULT_OFFLINE_TIMEOUT,
     DEFAULT_STALE_TIMEOUT,
     DOMAIN,
+    EVENT_ENTERED_ZONE,
+    EVENT_LEFT_ZONE,
+    EVENT_LOCATION_RECOVERED,
+    EVENT_LOCATION_STALE,
+    EVENT_STARTED_MOVING,
+    EVENT_STOPPED_MOVING,
+    Movement,
     PrivacyMode,
 )
 from .gps_filter import FilterConfig, accept_sample, haversine_meters
@@ -45,6 +58,9 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             CONF_MAX_SPEED_KMH: DEFAULT_MAX_SPEED_KMH,
             CONF_STALE_TIMEOUT: DEFAULT_STALE_TIMEOUT,
             CONF_OFFLINE_TIMEOUT: DEFAULT_OFFLINE_TIMEOUT,
+            CONF_ENTER_CONFIRMATION: DEFAULT_ENTER_CONFIRMATION,
+            CONF_EXIT_CONFIRMATION: DEFAULT_EXIT_CONFIRMATION,
+            CONF_DWELL_TIME: DEFAULT_DWELL_TIME,
             CONF_HOME_ZONE: DEFAULT_HOME_ZONE,
             "privacy_mode": PrivacyMode.FULL.value,
             **config,
@@ -53,6 +69,11 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             self.config[CONF_SOURCE_ENTITIES] = [self.config["source_entity"]]
         self.previous: LocationSample | None = None
         self.rejected_samples = 0
+        self._confirmed_zone: str | None = None
+        self._pending_zone: str | None = None
+        self._pending_zone_since: datetime | None = None
+        self._previous_movement = Movement.UNKNOWN
+        self._previous_stale = True
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=None)
 
     @property
@@ -109,6 +130,70 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             samples.append(sample)
         return samples, status
 
+    def _confirm_zone(self, candidate: str | None, now: datetime) -> str | None:
+        """Apply enter/exit confirmation and dwell time to a zone candidate."""
+        if candidate == self._confirmed_zone:
+            self._pending_zone = None
+            self._pending_zone_since = None
+            return self._confirmed_zone
+        if candidate != self._pending_zone:
+            self._pending_zone = candidate
+            self._pending_zone_since = now
+            return self._confirmed_zone
+        if self._pending_zone_since is None:
+            self._pending_zone_since = now
+            return self._confirmed_zone
+
+        elapsed = (now - self._pending_zone_since).total_seconds()
+        timeout = (
+            float(self.config.get(CONF_EXIT_CONFIRMATION, DEFAULT_EXIT_CONFIRMATION))
+            if self._confirmed_zone is not None
+            else float(
+                self.config.get(CONF_ENTER_CONFIRMATION, DEFAULT_ENTER_CONFIRMATION)
+            )
+        )
+        timeout = max(timeout, float(self.config.get(CONF_DWELL_TIME, DEFAULT_DWELL_TIME)))
+        if elapsed < timeout:
+            return self._confirmed_zone
+
+        old_zone = self._confirmed_zone
+        self._confirmed_zone = candidate
+        self._pending_zone = None
+        self._pending_zone_since = None
+        if old_zone is not None and old_zone != candidate:
+            self.hass.bus.async_fire(
+                EVENT_LEFT_ZONE,
+                {"person": self.person_entity, "zone": old_zone},
+            )
+        if candidate is not None and candidate != old_zone:
+            self.hass.bus.async_fire(
+                EVENT_ENTERED_ZONE,
+                {"person": self.person_entity, "zone": candidate},
+            )
+        return self._confirmed_zone
+
+    def _fire_state_events(
+        self, movement: Movement, stale: bool, now: datetime
+    ) -> None:
+        """Fire movement and stale/recovered transition events."""
+        was_moving = self._previous_movement not in {
+            Movement.UNKNOWN,
+            Movement.STATIONARY,
+        }
+        is_moving = movement not in {Movement.UNKNOWN, Movement.STATIONARY}
+        if is_moving != was_moving:
+            self.hass.bus.async_fire(
+                EVENT_STARTED_MOVING if is_moving else EVENT_STOPPED_MOVING,
+                {"person": self.person_entity, "movement": movement.value},
+            )
+        if stale != self._previous_stale:
+            self.hass.bus.async_fire(
+                EVENT_LOCATION_STALE if stale else EVENT_LOCATION_RECOVERED,
+                {"person": self.person_entity, "timestamp": now.isoformat()},
+            )
+        self._previous_movement = movement
+        self._previous_stale = stale
+
     async def _async_update_data(self) -> LocationState:
         """Read, filter and fuse all configured source entities."""
         samples, status = self._read_samples()
@@ -151,23 +236,29 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 float(home.attributes["longitude"]),
             )
 
-        zone = None
+        candidate_zone = None
         source_state = self.hass.states.get(sample.source)
         if source_state:
-            zone = source_state.attributes.get("zone")
-            if zone is None and source_state.state not in {"unknown", "unavailable"}:
-                zone = source_state.state
+            candidate_zone = source_state.attributes.get("zone")
+            if candidate_zone is None and source_state.state not in {"unknown", "unavailable"}:
+                candidate_zone = source_state.state
+        zone = self._confirm_zone(candidate_zone, now)
+
+        movement = classify_speed(sample.speed_kmh)
+        stale = age >= float(self.config[CONF_STALE_TIMEOUT])
+        offline = age >= float(self.config[CONF_OFFLINE_TIMEOUT])
+        self._fire_state_events(movement, stale, now)
 
         return LocationState(
             sample=sample,
             confidence=calculate_confidence(
                 sample, now=now, corroborated=len(accepted) > 1
             ),
-            movement=classify_speed(sample.speed_kmh),
+            movement=movement,
             zone=zone,
             distance_home=distance_home,
-            stale=age >= float(self.config[CONF_STALE_TIMEOUT]),
-            offline=age >= float(self.config[CONF_OFFLINE_TIMEOUT]),
+            stale=stale,
+            offline=offline,
             source_count=len(accepted),
             rejected_samples=self.rejected_samples,
             source_status=status,
