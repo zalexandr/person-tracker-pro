@@ -2,3 +2,6 @@
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+[tool.ruff.lint]
+ignore = ["I001"]
