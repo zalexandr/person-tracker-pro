@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from typing import Any
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -31,10 +34,10 @@ PRIVACY_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the domain services once."""
 
-    async def _targets(call: ServiceCall):
+    async def _targets(call: ServiceCall) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
         entry_id = call.data.get("entry_id")
         for current_id, coordinator in hass.data.get(DOMAIN, {}).items():
             if entry_id and current_id != entry_id:
@@ -51,7 +54,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 
     async def set_privacy(call: ServiceCall) -> None:
         mode = call.data["mode"]
-        for entry_id, coordinator in _targets(call):
+        async for entry_id, coordinator in _targets(call):
             coordinator.config[CONF_PRIVACY_MODE] = mode
             entry = hass.config_entries.async_get_entry(entry_id)
             if entry is not None:
