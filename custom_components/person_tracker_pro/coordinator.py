@@ -11,11 +11,21 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .confidence import calculate_confidence
 from .const import (
-    CONF_HOME_ZONE, CONF_MAX_ACCURACY, CONF_MAX_JUMP_METERS, CONF_MAX_SPEED_KMH,
-    CONF_OFFLINE_TIMEOUT, CONF_SOURCE_ENTITIES, CONF_STALE_TIMEOUT,
-    DEFAULT_HOME_ZONE, DEFAULT_MAX_ACCURACY, DEFAULT_MAX_JUMP_METERS,
-    DEFAULT_MAX_SPEED_KMH, DEFAULT_OFFLINE_TIMEOUT, DEFAULT_STALE_TIMEOUT,
-    DOMAIN, PrivacyMode,
+    CONF_HOME_ZONE,
+    CONF_MAX_ACCURACY,
+    CONF_MAX_JUMP_METERS,
+    CONF_MAX_SPEED_KMH,
+    CONF_OFFLINE_TIMEOUT,
+    CONF_SOURCE_ENTITIES,
+    CONF_STALE_TIMEOUT,
+    DEFAULT_HOME_ZONE,
+    DEFAULT_MAX_ACCURACY,
+    DEFAULT_MAX_JUMP_METERS,
+    DEFAULT_MAX_SPEED_KMH,
+    DEFAULT_OFFLINE_TIMEOUT,
+    DEFAULT_STALE_TIMEOUT,
+    DOMAIN,
+    PrivacyMode,
 )
 from .gps_filter import FilterConfig, accept_sample, haversine_meters
 from .models import LocationSample, LocationState
@@ -79,10 +89,19 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 status[entity_id] = "no_location"
                 continue
             try:
-                accuracy = float(state.attributes.get("gps_accuracy", state.attributes.get("accuracy", 9999)))
+                accuracy = float(
+                    state.attributes.get(
+                        "gps_accuracy", state.attributes.get("accuracy", 9999)
+                    )
+                )
                 sample = LocationSample(
-                    float(lat), float(lon), accuracy, state.last_updated, entity_id,
-                    _numeric(state.attributes.get("speed")), _numeric(state.attributes.get("course")),
+                    float(lat),
+                    float(lon),
+                    accuracy,
+                    state.last_updated,
+                    entity_id,
+                    _numeric(state.attributes.get("speed")),
+                    _numeric(state.attributes.get("course")),
                 )
             except (TypeError, ValueError):
                 status[entity_id] = "invalid_location"
@@ -112,16 +131,24 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         elif self.previous is not None:
             sample = self.previous
         else:
-            return LocationState(source_status=status, rejected_samples=self.rejected_samples)
+            return LocationState(
+                source_status=status, rejected_samples=self.rejected_samples
+            )
 
         now = datetime.now(timezone.utc)
         age = max(0.0, (now - sample.timestamp).total_seconds())
         home = self.hass.states.get(self.config.get(CONF_HOME_ZONE, DEFAULT_HOME_ZONE))
         distance_home = None
-        if home and home.attributes.get("latitude") is not None and home.attributes.get("longitude") is not None:
+        if (
+            home
+            and home.attributes.get("latitude") is not None
+            and home.attributes.get("longitude") is not None
+        ):
             distance_home = haversine_meters(
-                sample.latitude, sample.longitude,
-                float(home.attributes["latitude"]), float(home.attributes["longitude"]),
+                sample.latitude,
+                sample.longitude,
+                float(home.attributes["latitude"]),
+                float(home.attributes["longitude"]),
             )
 
         zone = None
@@ -133,12 +160,16 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
 
         return LocationState(
             sample=sample,
-            confidence=calculate_confidence(sample, now=now, corroborated=len(accepted) > 1),
-            movement=classify_speed(sample.speed_kmh), zone=zone,
+            confidence=calculate_confidence(
+                sample, now=now, corroborated=len(accepted) > 1
+            ),
+            movement=classify_speed(sample.speed_kmh),
+            zone=zone,
             distance_home=distance_home,
             stale=age >= float(self.config[CONF_STALE_TIMEOUT]),
             offline=age >= float(self.config[CONF_OFFLINE_TIMEOUT]),
-            source_count=len(accepted), rejected_samples=self.rejected_samples,
+            source_count=len(accepted),
+            rejected_samples=self.rejected_samples,
             source_status=status,
         )
 
