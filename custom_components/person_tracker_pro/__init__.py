@@ -37,7 +37,9 @@ PRIVACY_SCHEMA = vol.Schema(
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the domain services once."""
 
-    async def _targets(call: ServiceCall) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
+    async def _targets(
+        call: ServiceCall,
+    ) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
         entry_id = call.data.get("entry_id")
         for current_id, coordinator in hass.data.get(DOMAIN, {}).items():
             if entry_id and current_id != entry_id:
@@ -84,7 +86,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: PersonTrackerConfigEntry
+) -> bool:
     """Unload an entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
