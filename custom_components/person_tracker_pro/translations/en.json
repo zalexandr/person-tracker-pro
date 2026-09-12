@@ -4,18 +4,25 @@
     "step": {
       "user": {
         "title": "Set up Person Tracker PRO",
-        "description": "Connect a Home Assistant person with a device tracker.",
+        "description": "Connect a Home Assistant person with one or more location sources.",
         "data": {
           "person_entity": "Person",
-          "source_entity": "Location source",
+          "source_entities": "Location sources",
           "battery_entity": "Battery sensor"
-        },
-        "data_description": {
-          "person_entity": "The Home Assistant person that owns this tracker.",
-          "source_entity": "A device_tracker entity providing latitude and longitude.",
-          "battery_entity": "Optional battery sensor for the tracked phone."
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Person Tracker PRO",
+        "description": "Change the person or location sources used by this tracker.",
+        "data": {
+          "person_entity": "Person",
+          "source_entities": "Location sources",
+          "battery_entity": "Battery sensor"
         }
       }
+    },
+    "abort": {
+      "already_configured": "This person is already configured."
     }
   },
   "options": {
@@ -30,38 +37,26 @@
           "exit_confirmation": "Zone exit confirmation (s)",
           "stale_timeout": "Stale timeout (s)",
           "offline_timeout": "Offline timeout (s)",
-          "dwell_time": "Minimum dwell time (s)"
+          "dwell_time": "Minimum dwell time (s)",
+          "home_zone": "Home zone",
+          "privacy_mode": "Privacy mode"
         }
       }
     }
   },
   "entity": {
     "sensor": {
-      "presence_confidence": {
-        "name": "Presence confidence"
-      },
-      "gps_accuracy": {
-        "name": "GPS accuracy"
-      },
-      "speed": {
-        "name": "Speed"
-      },
-      "rejected_gps_samples": {
-        "name": "Rejected GPS samples"
-      }
+      "presence_confidence": {"name": "Presence confidence"},
+      "gps_accuracy": {"name": "GPS accuracy"},
+      "speed": {"name": "Speed"},
+      "active_sources": {"name": "Active sources"},
+      "rejected_gps_samples": {"name": "Rejected GPS samples"}
     },
     "binary_sensor": {
-      "location_stale": {
-        "name": "Location stale"
-      },
-      "location_offline": {
-        "name": "Location offline"
-      }
+      "location_stale": {"name": "Location stale"},
+      "location_offline": {"name": "Location offline"},
+      "moving": {"name": "Moving"}
     },
-    "device_tracker": {
-      "location": {
-        "name": "Location"
-      }
-    }
+    "device_tracker": {"location": {"name": "Location"}}
   }
 }

@@ -2,62 +2,145 @@
 
 Advanced local-first presence and location intelligence for Home Assistant.
 
-## Goals
+## What it does
 
-- Modern ConfigEntry-based Home Assistant integration.
+Person Tracker PRO fuses one or more existing Home Assistant `device_tracker.*` entities into a single presence/location intelligence layer for a `person.*` entity. It does not replace Home Assistant's native `person` integration and does not require a cloud service.
+
+Features:
+
 - Multi-source location fusion.
-- GPS quality filtering and impossible-jump rejection.
-- Zone hysteresis and dwell-time confirmation.
+- GPS accuracy filtering and impossible-jump rejection.
+- Freshness-first source selection with accuracy tie-breaking.
+- Zone/state propagation from the selected tracker.
 - Presence confidence score.
 - Movement classification.
 - Stale/offline detection.
-- Separate battery sensors.
+- Runtime privacy modes: `full`, `zone_only`, `private`.
+- Separate battery sensor support.
+- Diagnostics.
+- Config-entry migration and UI reconfiguration.
 - RU / UK / PL / EN localization.
-- Diagnostics, repairs, services and tests.
-- No cloud service is required by the core engine.
+- Services for immediate location refresh, recalculation and privacy changes.
 
-> This repository is an initial production-oriented implementation. It is intentionally source-first: the actual phone/location sources remain Home Assistant entities such as `device_tracker.*`. Person Tracker PRO processes those entities instead of replacing Home Assistant's `person` integration.
+## Requirements
+
+- Home Assistant with Config Entries and the `person` integration.
+- At least one existing `device_tracker.*` entity containing latitude/longitude attributes.
+- Optional battery `sensor.*` entity with device class `battery`.
+
+The integration is a local helper: the source trackers are responsible for obtaining GPS data.
 
 ## Installation
 
 ### HACS
-This project can be added as a custom HACS repository once published to GitHub.
+
+Add this repository as a custom HACS repository and select **Integration**, or install it after the repository is published in the HACS default store.
 
 ### Manual
+
 Copy `custom_components/person_tracker_pro` into:
 
 ```text
 /config/custom_components/person_tracker_pro
 ```
 
-Restart Home Assistant.
-
-Then:
+Restart Home Assistant, then open:
 
 **Settings → Devices & services → Add integration → Person Tracker PRO**
 
-## Recommended source
+## Initial setup
 
-Use Home Assistant Companion App `device_tracker` entities as the primary GPS source. OwnTracks and other compatible trackers can also be used when exposed as Home Assistant entities.
+Choose:
 
-## Architecture
+1. The target Home Assistant person, for example `person.olek`.
+2. One or more location sources, for example `device_tracker.olek_phone` and `device_tracker.olek_watch`.
+3. Optionally, a battery sensor.
+
+A person can only be configured once. Required setup data can later be changed through **Reconfigure** without removing the integration.
+
+## Options
+
+The Options flow controls:
+
+| Option | Purpose |
+|---|---|
+| Maximum GPS accuracy | Reject fixes worse than the configured accuracy. |
+| Maximum GPS jump | Reject implausible movement between samples. |
+| Maximum plausible speed | Reject movement that would require an impossible speed. |
+| Zone entry/exit confirmation | Delay transitions to avoid GPS jitter. |
+| Stale timeout | Mark the location stale after this age. |
+| Offline timeout | Mark the source offline after this age. |
+| Minimum dwell time | Reserved for confirmed zone dwell logic. |
+| Home zone | Zone entity used for distance calculations. |
+| Privacy mode | Controls exposure of precise location data. |
+
+## Privacy modes
+
+- **full** — coordinates and selected source are available.
+- **zone_only** — precise coordinates are hidden; zone-level information remains available.
+- **private** — precise location and zone/distance details are hidden.
+
+The privacy service also persists the selected mode in the config entry options.
+
+## Entities
+
+The integration creates a device containing:
+
+- `device_tracker` — fused location.
+- Presence confidence sensor.
+- GPS accuracy sensor.
+- Speed sensor.
+- Active-source sensor.
+- Rejected-GPS-samples sensor.
+- Location-stale binary sensor.
+- Location-offline binary sensor.
+- Moving binary sensor.
+
+Entity names are translated in English, Polish, Russian and Ukrainian.
+
+## Services
+
+### `person_tracker_pro.request_location`
+
+Immediately refresh the fused location.
+
+Optional field:
+
+```yaml
+entry_id: "CONFIG_ENTRY_ID"
+```
+
+### `person_tracker_pro.recalculate_presence`
+
+Recalculate the fused state immediately. It accepts the same optional `entry_id` field.
+
+### `person_tracker_pro.set_privacy_mode`
+
+Change and persist the privacy mode.
+
+```yaml
+mode: zone_only
+entry_id: "CONFIG_ENTRY_ID"
+```
+
+Supported modes: `full`, `zone_only`, `private`.
+
+## Data flow
 
 ```text
 Home Assistant device_trackers
           |
           v
-     Source adapters
+      GPS filtering
           |
           v
-      GPS filter
+   Multi-source fusion
           |
-          v
-     Location fusion
-          |
-          +----> zone engine
-          +----> movement engine
-          +----> confidence engine
-          +----> stale/offline engine
+     +----+----+
+     |    |    |
+   zone movement confidence
+     |    |    |
+     +----+----+
           |
           v
      Person Tracker PRO
@@ -65,58 +148,38 @@ Home Assistant device_trackers
           +----> device_tracker
           +----> sensors
           +----> binary sensors
-          +----> events
-          +----> services
+          +----> diagnostics/services
 ```
 
-## Important design decisions
+## Troubleshooting
 
-1. The integration does not store battery on `TrackerEntity`; battery is exposed as a separate sensor.
-2. The integration uses the modern ConfigEntry/device-tracker architecture.
-3. The engine rejects impossible GPS jumps rather than blindly accepting the newest coordinate.
-4. Zone transitions use hysteresis and confirmation time.
-5. Raw GPS is kept in runtime memory only by default. Long-term history is left to Home Assistant Recorder.
-6. All user-facing text is localized.
-7. The core calculation code is pure Python where practical, making it easy to unit-test.
+If the fused tracker has no location:
 
-## Initial configuration
+1. Confirm every configured source exists.
+2. Confirm the source exposes `latitude` and `longitude` attributes.
+3. Check `gps_accuracy` and the configured maximum accuracy.
+4. Check the stale/offline binary sensors.
+5. Review the integration diagnostics before opening an issue.
 
-A first version uses a source entity and a target Home Assistant person. Multiple source entities can later be attached to the same person.
+If a valid fix is rejected, inspect the configured maximum jump and maximum plausible speed. GPS glitches are deliberately rejected instead of being propagated to the fused tracker.
 
-Example:
+## Diagnostics and privacy
 
-- Person: `person.olek`
-- GPS source: `device_tracker.olek_phone`
-- Battery source: `sensor.olek_phone_battery`
-- Home zone: `zone.home`
+Diagnostics are designed to avoid exposing raw coordinates. Precise location is kept in runtime state and is not written to the integration's own persistent storage. Home Assistant Recorder controls long-term history according to the user's Recorder configuration.
 
 ## Development
 
-Install Home Assistant test dependencies in a development environment, then run:
+Install the Home Assistant test dependencies and run:
 
 ```bash
 pytest -q
 python -m script.hassfest
 ```
 
-For a custom integration, localization files live in `translations/`.
+GitHub Actions runs both Hassfest validation and the pytest suite on pushes and pull requests.
 
-## Roadmap
+For custom integrations, user-facing localization is stored under `custom_components/person_tracker_pro/translations/`.
 
-- [x] Config flow
-- [x] Options flow
-- [x] GPS filtering
-- [x] Confidence engine
-- [x] Zone hysteresis
-- [x] Movement classification
-- [x] Stale/offline state
-- [x] RU / UK / PL / EN translations
-- [x] Diagnostics
-- [x] Repairs
-- [x] Services
-- [x] Unit tests for pure engines
-- [ ] Multi-source UI management
-- [ ] Advanced route/ETA provider
-- [ ] Companion App adaptive tracking commands
-- [ ] HA device automation triggers
-- [ ] HACS metadata/brand assets
+## Project status
+
+The current `v0.2.1` branch is the production-oriented modernization track. The remaining roadmap focuses on advanced route/ETA functionality, adaptive tracking commands and richer Home Assistant automation triggers.

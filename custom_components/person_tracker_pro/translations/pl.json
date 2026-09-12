@@ -4,64 +4,25 @@
     "step": {
       "user": {
         "title": "Konfiguracja Person Tracker PRO",
-        "description": "Połącz osobę Home Assistant z trackerem urządzenia.",
-        "data": {
-          "person_entity": "Osoba",
-          "source_entity": "Źródło lokalizacji",
-          "battery_entity": "Czujnik baterii"
-        },
-        "data_description": {
-          "person_entity": "The Home Assistant person that owns this tracker.",
-          "source_entity": "A device_tracker entity providing latitude and longitude.",
-          "battery_entity": "Optional battery sensor for the tracked phone."
-        }
+        "description": "Połącz osobę Home Assistant z jednym lub wieloma źródłami lokalizacji.",
+        "data": {"person_entity": "Osoba", "source_entities": "Źródła lokalizacji", "battery_entity": "Czujnik baterii"}
+      },
+      "reconfigure": {
+        "title": "Ponowna konfiguracja Person Tracker PRO",
+        "description": "Zmień osobę lub źródła lokalizacji używane przez tracker.",
+        "data": {"person_entity": "Osoba", "source_entities": "Źródła lokalizacji", "battery_entity": "Czujnik baterii"}
       }
-    }
+    },
+    "abort": {"already_configured": "Ta osoba jest już skonfigurowana."}
   },
   "options": {
-    "step": {
-      "init": {
-        "title": "Opcje Person Tracker PRO",
-        "data": {
-          "max_accuracy": "Maximum GPS accuracy (m)",
-          "max_jump_meters": "Maximum GPS jump (m)",
-          "max_speed_kmh": "Maximum plausible speed (km/h)",
-          "enter_confirmation": "Zone entry confirmation (s)",
-          "exit_confirmation": "Zone exit confirmation (s)",
-          "stale_timeout": "Stale timeout (s)",
-          "offline_timeout": "Offline timeout (s)",
-          "dwell_time": "Minimum dwell time (s)"
-        }
-      }
-    }
+    "step": {"init": {"title": "Opcje Person Tracker PRO", "data": {
+      "max_accuracy": "Maksymalna dokładność GPS (m)", "max_jump_meters": "Maksymalny skok GPS (m)", "max_speed_kmh": "Maksymalna dopuszczalna prędkość (km/h)", "enter_confirmation": "Potwierdzenie wejścia do strefy (s)", "exit_confirmation": "Potwierdzenie wyjścia ze strefy (s)", "stale_timeout": "Limit przestarzałej lokalizacji (s)", "offline_timeout": "Limit offline (s)", "dwell_time": "Minimalny czas pobytu (s)", "home_zone": "Strefa domowa", "privacy_mode": "Tryb prywatności"
+    }}}
   },
   "entity": {
-    "sensor": {
-      "presence_confidence": {
-        "name": "Presence confidence"
-      },
-      "gps_accuracy": {
-        "name": "GPS accuracy"
-      },
-      "speed": {
-        "name": "Speed"
-      },
-      "rejected_gps_samples": {
-        "name": "Rejected GPS samples"
-      }
-    },
-    "binary_sensor": {
-      "location_stale": {
-        "name": "Location stale"
-      },
-      "location_offline": {
-        "name": "Location offline"
-      }
-    },
-    "device_tracker": {
-      "location": {
-        "name": "Location"
-      }
-    }
+    "sensor": {"presence_confidence": {"name": "Pewność obecności"}, "gps_accuracy": {"name": "Dokładność GPS"}, "speed": {"name": "Prędkość"}, "active_sources": {"name": "Aktywne źródła"}, "rejected_gps_samples": {"name": "Odrzucone próbki GPS"}},
+    "binary_sensor": {"location_stale": {"name": "Lokalizacja nieaktualna"}, "location_offline": {"name": "Lokalizacja offline"}, "moving": {"name": "W ruchu"}},
+    "device_tracker": {"location": {"name": "Lokalizacja"}}
   }
 }
