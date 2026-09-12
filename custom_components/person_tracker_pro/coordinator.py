@@ -11,7 +11,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .confidence import calculate_confidence
 from .const import (
-    CONF_DWELL_TIME,
     CONF_ENTER_CONFIRMATION,
     CONF_EXIT_CONFIRMATION,
     CONF_HOME_ZONE,
@@ -21,7 +20,6 @@ from .const import (
     CONF_OFFLINE_TIMEOUT,
     CONF_SOURCE_ENTITIES,
     CONF_STALE_TIMEOUT,
-    DEFAULT_DWELL_TIME,
     DEFAULT_ENTER_CONFIRMATION,
     DEFAULT_EXIT_CONFIRMATION,
     DEFAULT_HOME_ZONE,
@@ -60,7 +58,6 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             CONF_OFFLINE_TIMEOUT: DEFAULT_OFFLINE_TIMEOUT,
             CONF_ENTER_CONFIRMATION: DEFAULT_ENTER_CONFIRMATION,
             CONF_EXIT_CONFIRMATION: DEFAULT_EXIT_CONFIRMATION,
-            CONF_DWELL_TIME: DEFAULT_DWELL_TIME,
             CONF_HOME_ZONE: DEFAULT_HOME_ZONE,
             "privacy_mode": PrivacyMode.FULL.value,
             **config,
@@ -73,7 +70,7 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         self._pending_zone: str | None = None
         self._pending_zone_since: datetime | None = None
         self._previous_movement = Movement.UNKNOWN
-        self._previous_stale = True
+        self._previous_stale: bool | None = None
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=None)
 
     @property
@@ -131,15 +128,17 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         return samples, status
 
     def _confirm_zone(self, candidate: str | None, now: datetime) -> str | None:
-        """Apply enter/exit confirmation and dwell time to a zone candidate."""
+        """Apply enter/exit confirmation to a zone candidate."""
         if candidate == self._confirmed_zone:
             self._pending_zone = None
             self._pending_zone_since = None
             return self._confirmed_zone
+
         if candidate != self._pending_zone:
             self._pending_zone = candidate
             self._pending_zone_since = now
             return self._confirmed_zone
+
         if self._pending_zone_since is None:
             self._pending_zone_since = now
             return self._confirmed_zone
@@ -152,7 +151,6 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
                 self.config.get(CONF_ENTER_CONFIRMATION, DEFAULT_ENTER_CONFIRMATION)
             )
         )
-        timeout = max(timeout, float(self.config.get(CONF_DWELL_TIME, DEFAULT_DWELL_TIME)))
         if elapsed < timeout:
             return self._confirmed_zone
 
@@ -181,12 +179,12 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             Movement.STATIONARY,
         }
         is_moving = movement not in {Movement.UNKNOWN, Movement.STATIONARY}
-        if is_moving != was_moving:
+        if self._previous_movement != Movement.UNKNOWN and is_moving != was_moving:
             self.hass.bus.async_fire(
                 EVENT_STARTED_MOVING if is_moving else EVENT_STOPPED_MOVING,
                 {"person": self.person_entity, "movement": movement.value},
             )
-        if stale != self._previous_stale:
+        if self._previous_stale is not None and stale != self._previous_stale:
             self.hass.bus.async_fire(
                 EVENT_LOCATION_STALE if stale else EVENT_LOCATION_RECOVERED,
                 {"person": self.person_entity, "timestamp": now.isoformat()},
