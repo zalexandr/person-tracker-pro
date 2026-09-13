@@ -2,57 +2,95 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from typing import Any
+
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    CONF_PRIVACY_MODE,
+    DOMAIN,
     PLATFORMS,
     SERVICE_RECALCULATE,
     SERVICE_REQUEST_LOCATION,
     SERVICE_SET_PRIVACY,
+    PrivacyMode,
 )
 from .coordinator import PersonTrackerCoordinator
 
+
 type PersonTrackerConfigEntry = ConfigEntry[PersonTrackerCoordinator]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+SERVICE_SCHEMA = vol.Schema({vol.Optional("entry_id"): cv.string})
+PRIVACY_SCHEMA = vol.Schema(
+    {
+        vol.Required("mode"): vol.In([mode.value for mode in PrivacyMode]),
+        vol.Optional("entry_id"): cv.string,
+    }
+)
+
+
+async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
+    """Set up the domain services once."""
+
+    async def _targets(
+        call: ServiceCall,
+    ) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
+        entry_id = call.data.get("entry_id")
+        for current_id, coordinator in hass.data.get(DOMAIN, {}).items():
+            if entry_id and current_id != entry_id:
+                continue
+            yield current_id, coordinator
+
+    async def request_location(call: ServiceCall) -> None:
+        async for _, coordinator in _targets(call):
+            await coordinator.async_request_location()
+
+    async def recalculate(call: ServiceCall) -> None:
+        async for _, coordinator in _targets(call):
+            await coordinator.async_recalculate()
+
+    async def set_privacy(call: ServiceCall) -> None:
+        mode = call.data["mode"]
+        async for entry_id, coordinator in _targets(call):
+            coordinator.config[CONF_PRIVACY_MODE] = mode
+            entry = hass.config_entries.async_get_entry(entry_id)
+            if entry is not None:
+                options = {**entry.options, CONF_PRIVACY_MODE: mode}
+                hass.config_entries.async_update_entry(entry, options=options)
+            await coordinator.async_refresh()
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_REQUEST_LOCATION, request_location, schema=SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_RECALCULATE, recalculate, schema=SERVICE_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_SET_PRIVACY, set_privacy, schema=PRIVACY_SCHEMA
+    )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
-    """Set up Person Tracker PRO from a config entry."""
+    """Set up an entry."""
     coordinator = PersonTrackerCoordinator(hass, {**entry.data, **entry.options})
     entry.runtime_data = coordinator
-
+    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await coordinator.async_config_entry_first_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    async def request_location(call: ServiceCall) -> None:
-        await coordinator.async_request_location()
-
-    async def recalculate(call: ServiceCall) -> None:
-        await coordinator.async_request_location()
-
-    async def set_privacy(call: ServiceCall) -> None:
-        # Privacy changes are persisted through the options flow in the first
-        # release; this service is reserved for runtime extensions.
-        return
-
-    hass.services.async_register("person_tracker_pro", SERVICE_REQUEST_LOCATION, request_location)
-    hass.services.async_register("person_tracker_pro", SERVICE_RECALCULATE, recalculate)
-    hass.services.async_register("person_tracker_pro", SERVICE_SET_PRIVACY, set_privacy)
-
     return True
 
 
 async def async_unload_entry(
     hass: HomeAssistant, entry: PersonTrackerConfigEntry
 ) -> bool:
-    """Unload a config entry."""
+    """Unload an entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
-        for service in (
-            SERVICE_REQUEST_LOCATION,
-            SERVICE_RECALCULATE,
-            SERVICE_SET_PRIVACY,
-        ):
-            if hass.services.has_service("person_tracker_pro", service):
-                hass.services.async_remove("person_tracker_pro", service)
+        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     return unloaded

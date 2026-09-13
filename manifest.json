@@ -1,9 +1,0 @@
-{
-  "domain": "person_tracker_pro",
-  "name": "Person Tracker Pro",
-  "codeowners": ["@yourusername"],
-  "documentation": "https://github.com/...",
-  "integration_type": "hub",
-  "iot_class": "local_polling",
-  "version": "1.0.0"
-}

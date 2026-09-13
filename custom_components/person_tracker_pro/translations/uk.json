@@ -4,64 +4,25 @@
     "step": {
       "user": {
         "title": "Налаштування Person Tracker PRO",
-        "description": "Пов’яжіть особу Home Assistant із трекером пристрою.",
-        "data": {
-          "person_entity": "Особа",
-          "source_entity": "Джерело місцезнаходження",
-          "battery_entity": "Датчик батареї"
-        },
-        "data_description": {
-          "person_entity": "The Home Assistant person that owns this tracker.",
-          "source_entity": "A device_tracker entity providing latitude and longitude.",
-          "battery_entity": "Optional battery sensor for the tracked phone."
-        }
+        "description": "Пов’яжіть особу Home Assistant з одним або кількома джерелами місцезнаходження.",
+        "data": {"person_entity": "Особа", "source_entities": "Джерела місцезнаходження", "battery_entity": "Датчик батареї"}
+      },
+      "reconfigure": {
+        "title": "Повторне налаштування Person Tracker PRO",
+        "description": "Змініть особу або джерела місцезнаходження, які використовує трекер.",
+        "data": {"person_entity": "Особа", "source_entities": "Джерела місцезнаходження", "battery_entity": "Датчик батареї"}
       }
-    }
+    },
+    "abort": {"already_configured": "Цю особу вже налаштовано."}
   },
   "options": {
-    "step": {
-      "init": {
-        "title": "Налаштування Person Tracker PRO",
-        "data": {
-          "max_accuracy": "Maximum GPS accuracy (m)",
-          "max_jump_meters": "Maximum GPS jump (m)",
-          "max_speed_kmh": "Maximum plausible speed (km/h)",
-          "enter_confirmation": "Zone entry confirmation (s)",
-          "exit_confirmation": "Zone exit confirmation (s)",
-          "stale_timeout": "Stale timeout (s)",
-          "offline_timeout": "Offline timeout (s)",
-          "dwell_time": "Minimum dwell time (s)"
-        }
-      }
-    }
+    "step": {"init": {"title": "Налаштування Person Tracker PRO", "data": {
+      "max_accuracy": "Максимальна точність GPS (м)", "max_jump_meters": "Максимальний стрибок GPS (м)", "max_speed_kmh": "Максимальна допустима швидкість (км/год)", "enter_confirmation": "Підтвердження входу в зону (с)", "exit_confirmation": "Підтвердження виходу із зони (с)", "stale_timeout": "Тайм-аут застарівання (с)", "offline_timeout": "Тайм-аут офлайн (с)", "dwell_time": "Мінімальний час перебування (с)", "home_zone": "Домашня зона", "privacy_mode": "Режим приватності"
+    }}}
   },
   "entity": {
-    "sensor": {
-      "presence_confidence": {
-        "name": "Presence confidence"
-      },
-      "gps_accuracy": {
-        "name": "GPS accuracy"
-      },
-      "speed": {
-        "name": "Speed"
-      },
-      "rejected_gps_samples": {
-        "name": "Rejected GPS samples"
-      }
-    },
-    "binary_sensor": {
-      "location_stale": {
-        "name": "Location stale"
-      },
-      "location_offline": {
-        "name": "Location offline"
-      }
-    },
-    "device_tracker": {
-      "location": {
-        "name": "Location"
-      }
-    }
+    "sensor": {"presence_confidence": {"name": "Впевненість присутності"}, "gps_accuracy": {"name": "Точність GPS"}, "speed": {"name": "Швидкість"}, "active_sources": {"name": "Активні джерела"}, "rejected_gps_samples": {"name": "Відхилені GPS-точки"}},
+    "binary_sensor": {"location_stale": {"name": "Місцезнаходження застаріле"}, "location_offline": {"name": "Місцезнаходження офлайн"}, "moving": {"name": "У русі"}},
+    "device_tracker": {"location": {"name": "Місцезнаходження"}}
   }
 }

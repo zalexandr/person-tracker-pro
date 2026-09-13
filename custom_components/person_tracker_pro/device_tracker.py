@@ -2,50 +2,75 @@
 
 from __future__ import annotations
 
-from homeassistant.components.device_tracker import TrackerEntity
-from homeassistant.const import ATTR_LATITUDE, ATTR_LONGITUDE
+from homeassistant.components.device_tracker import SourceType, TrackerEntity
 
-from .const import ATTR_ACCURACY, ATTR_CONFIDENCE, ATTR_MOVEMENT, ATTR_SOURCE, ATTR_ZONE
+from .const import (
+    ATTR_ACCURACY,
+    ATTR_CONFIDENCE,
+    ATTR_DISTANCE_HOME,
+    ATTR_MOVEMENT,
+    ATTR_OFFLINE,
+    ATTR_REJECTED,
+    ATTR_SOURCE,
+    ATTR_SOURCE_COUNT,
+    ATTR_STALE,
+    ATTR_ZONE,
+    PrivacyMode,
+)
 from .entity import PersonTrackerEntity
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
-    """Set up tracker."""
-    coordinator = entry.runtime_data
-    async_add_entities([PersonTrackerTracker(coordinator)])
+    """Set up the fused tracker."""
+    async_add_entities([PersonTrackerTracker(entry.runtime_data, entry.entry_id)], True)
 
 
 class PersonTrackerTracker(PersonTrackerEntity, TrackerEntity):
-    """Fused tracker."""
+    """Fused GPS tracker."""
 
     _attr_name = "Location"
+    _attr_source_type = SourceType.GPS
+
+    def __init__(self, coordinator, entry_id: str) -> None:
+        super().__init__(coordinator, f"{entry_id}_location")
 
     @property
     def latitude(self) -> float | None:
+        """Return latitude according to the configured privacy mode."""
         sample = self.coordinator.data.sample
-        return sample.latitude if sample else None
+        if not sample or self.coordinator.privacy_mode != PrivacyMode.FULL:
+            return None
+        return sample.latitude
 
     @property
     def longitude(self) -> float | None:
+        """Return longitude according to the configured privacy mode."""
         sample = self.coordinator.data.sample
-        return sample.longitude if sample else None
+        if not sample or self.coordinator.privacy_mode != PrivacyMode.FULL:
+            return None
+        return sample.longitude
 
     @property
-    def location_accuracy(self) -> int:
+    def location_accuracy(self) -> float | None:
+        """Return the selected source accuracy."""
         sample = self.coordinator.data.sample
-        return round(sample.accuracy) if sample else 0
+        return sample.accuracy if sample else None
 
     @property
-    def extra_state_attributes(self):
+    def extra_state_attributes(self) -> dict[str, object]:
+        """Expose useful diagnostics without leaking coordinates in privacy mode."""
         data = self.coordinator.data
         sample = data.sample
+        privacy = self.coordinator.privacy_mode
         return {
             ATTR_ACCURACY: sample.accuracy if sample else None,
             ATTR_CONFIDENCE: data.confidence,
             ATTR_MOVEMENT: data.movement,
-            ATTR_SOURCE: sample.source if sample else None,
-            ATTR_ZONE: data.zone,
-            "stale": data.stale,
-            "offline": data.offline,
-            "rejected_samples": data.rejected_samples,
+            ATTR_SOURCE: sample.source if sample and privacy == PrivacyMode.FULL else None,
+            ATTR_ZONE: data.zone if privacy != PrivacyMode.PRIVATE else None,
+            ATTR_DISTANCE_HOME: data.distance_home if privacy != PrivacyMode.PRIVATE else None,
+            ATTR_SOURCE_COUNT: data.source_count,
+            ATTR_REJECTED: data.rejected_samples,
+            ATTR_STALE: data.stale,
+            ATTR_OFFLINE: data.offline,
         }
