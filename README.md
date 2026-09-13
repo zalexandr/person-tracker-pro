@@ -98,6 +98,14 @@ The integration creates a device containing:
 
 Entity names are translated in English, Polish, Russian and Ukrainian.
 
+## Lovelace dashboard
+
+A dependency-free dashboard example is included at:
+
+`docs/lovelace/person_tracker_pro.yaml`
+
+It uses only standard Home Assistant cards: entity, map, grid, entities, markdown and history-graph. Before importing it, replace the clearly marked placeholder entity IDs with the actual entities created by your installation. No Mushroom or other custom frontend card is required.
+
 ## Services
 
 ### `person_tracker_pro.request_location`
