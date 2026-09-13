@@ -1,0 +1,94 @@
+# Person Tracker PRO - Lovelace dashboard example
+#
+# This is a standard Home Assistant Lovelace view and does not require
+# Mushroom, custom cards, or other frontend dependencies.
+#
+# Before adding this view, replace the entity IDs in the `entities` and
+# `map` cards with the IDs created by your Home Assistant entity registry.
+# The integration creates one device_tracker plus sensors/binary sensors.
+#
+# Suggested entity mapping:
+#   LOCATION_ENTITY  = fused device_tracker
+#   CONFIDENCE_ENTITY = Presence confidence sensor
+#   ACCURACY_ENTITY = GPS accuracy sensor
+#   SPEED_ENTITY = Speed sensor
+#   SOURCES_ENTITY = Active sources sensor
+#   REJECTED_ENTITY = Rejected GPS samples sensor
+#   STALE_ENTITY = Location stale binary sensor
+#   OFFLINE_ENTITY = Location offline binary sensor
+#   MOVING_ENTITY = Moving binary sensor
+#
+# Do not copy the placeholders literally. Replace them with real entity IDs.
+
+views:
+  - title: Person Tracker PRO
+    path: person-tracker-pro
+    icon: mdi:map-marker-account
+    cards:
+      - type: markdown
+        content: |
+          # 👤 Person Tracker PRO
+          Fused location, presence and movement status.
+
+      - type: entity
+        entity: device_tracker.REPLACE_WITH_LOCATION_ENTITY
+        name: Current location
+        icon: mdi:map-marker-account
+        state_color: true
+
+      - type: map
+        entities:
+          - entity: device_tracker.REPLACE_WITH_LOCATION_ENTITY
+        hours_to_show: 24
+        default_zoom: 14
+        auto_fit: true
+
+      - type: grid
+        columns: 3
+        square: false
+        cards:
+          - type: entity
+            entity: sensor.REPLACE_WITH_CONFIDENCE_ENTITY
+            name: Confidence
+            icon: mdi:shield-check
+            state_color: true
+          - type: entity
+            entity: binary_sensor.REPLACE_WITH_MOVING_ENTITY
+            name: Movement
+            icon: mdi:walk
+            state_color: true
+          - type: entity
+            entity: binary_sensor.REPLACE_WITH_OFFLINE_ENTITY
+            name: Connection
+            icon: mdi:lan-connect
+            state_color: true
+
+      - type: entities
+        title: Location details
+        show_header_toggle: false
+        entities:
+          - entity: sensor.REPLACE_WITH_ACCURACY_ENTITY
+            name: GPS accuracy
+          - entity: sensor.REPLACE_WITH_SPEED_ENTITY
+            name: Speed
+          - entity: sensor.REPLACE_WITH_SOURCES_ENTITY
+            name: Active sources
+          - entity: sensor.REPLACE_WITH_REJECTED_ENTITY
+            name: Rejected GPS samples
+          - entity: binary_sensor.REPLACE_WITH_STALE_ENTITY
+            name: Location stale
+
+      - type: entity
+        entity: device_tracker.REPLACE_WITH_LOCATION_ENTITY
+        name: Fused location attributes
+        attribute: zone
+        icon: mdi:map-marker-radius
+
+      - type: history-graph
+        title: Tracker history
+        hours_to_show: 24
+        entities:
+          - entity: sensor.REPLACE_WITH_SPEED_ENTITY
+            name: Speed
+          - entity: sensor.REPLACE_WITH_CONFIDENCE_ENTITY
+            name: Confidence
