@@ -61,6 +61,46 @@ def _setup_schema() -> vol.Schema:
     )
 
 
+def _number_selector(minimum: float, maximum: float, step: float) -> selector.NumberSelector:
+    """Build a visual number selector."""
+    return selector.NumberSelector(
+        selector.NumberSelectorConfig(
+            min=minimum,
+            max=maximum,
+            step=step,
+            mode=selector.NumberSelectorMode.BOX,
+        )
+    )
+
+
+def _options_schema() -> vol.Schema:
+    """Return the fully visual options schema."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_MAX_ACCURACY): _number_selector(10, 5000, 10),
+            vol.Required(CONF_MAX_JUMP_METERS): _number_selector(50, 50000, 50),
+            vol.Required(CONF_MAX_SPEED_KMH): _number_selector(20, 500, 5),
+            vol.Required(CONF_ENTER_CONFIRMATION): _number_selector(0, 600, 5),
+            vol.Required(CONF_EXIT_CONFIRMATION): _number_selector(0, 1800, 5),
+            vol.Required(CONF_STALE_TIMEOUT): _number_selector(30, 86400, 30),
+            vol.Required(CONF_OFFLINE_TIMEOUT): _number_selector(60, 172800, 60),
+            vol.Required(CONF_DWELL_TIME): _number_selector(0, 86400, 30),
+            vol.Required(CONF_HOME_ZONE): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="zone")
+            ),
+            vol.Required(CONF_PRIVACY_MODE): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": mode.value, "label": mode.value.replace("_", " ").title()}
+                        for mode in PrivacyMode
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            ),
+        }
+    )
+
+
 class PersonTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle integration setup and reconfiguration."""
 
@@ -111,22 +151,6 @@ class PersonTrackerOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(data=user_input)
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_MAX_ACCURACY): vol.Coerce(float),
-                vol.Required(CONF_MAX_JUMP_METERS): vol.Coerce(float),
-                vol.Required(CONF_MAX_SPEED_KMH): vol.Coerce(float),
-                vol.Required(CONF_ENTER_CONFIRMATION): vol.Coerce(int),
-                vol.Required(CONF_EXIT_CONFIRMATION): vol.Coerce(int),
-                vol.Required(CONF_STALE_TIMEOUT): vol.Coerce(int),
-                vol.Required(CONF_OFFLINE_TIMEOUT): vol.Coerce(int),
-                vol.Required(CONF_DWELL_TIME): vol.Coerce(int),
-                vol.Required(CONF_HOME_ZONE): str,
-                vol.Required(CONF_PRIVACY_MODE): vol.In(
-                    [mode.value for mode in PrivacyMode]
-                ),
-            }
-        )
         defaults = {
             CONF_MAX_ACCURACY: DEFAULT_MAX_ACCURACY,
             CONF_MAX_JUMP_METERS: DEFAULT_MAX_JUMP_METERS,
@@ -141,7 +165,9 @@ class PersonTrackerOptionsFlow(config_entries.OptionsFlow):
         }
         return self.async_show_form(
             step_id="init",
-            data_schema=self.add_suggested_values_to_schema(schema, defaults | self.config_entry.options),
+            data_schema=self.add_suggested_values_to_schema(
+                _options_schema(), defaults | self.config_entry.options
+            ),
         )
 
 
