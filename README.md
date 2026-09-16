@@ -19,6 +19,8 @@ Features:
 - Separate battery sensor support.
 - Diagnostics.
 - Config-entry migration and UI reconfiguration.
+- Fully visual setup/options selectors in Home Assistant.
+- Built-in Person Tracker PRO Lovelace card with graphical card editor.
 - RU / UK / PL / EN localization.
 - Services for immediate location refresh, recalculation and privacy changes.
 
@@ -56,11 +58,11 @@ Choose:
 2. One or more location sources, for example `device_tracker.olek_phone` and `device_tracker.olek_watch`.
 3. Optionally, a battery sensor.
 
-A person can only be configured once. Required setup data can later be changed through **Reconfigure** without removing the integration.
+All three choices use Home Assistant's visual entity selectors. A person can only be configured once. Required setup data can later be changed through **Reconfigure** without removing the integration.
 
 ## Options
 
-The Options flow controls:
+The Options flow is now fully visual. Numeric limits use number controls, Home zone uses a zone selector, and Privacy mode uses a dropdown.
 
 | Option | Purpose |
 |---|---|
@@ -73,6 +75,25 @@ The Options flow controls:
 | Minimum dwell time | Reserved for confirmed zone dwell logic. |
 | Home zone | Zone entity used for distance calculations. |
 | Privacy mode | Controls exposure of precise location data. |
+
+## Built-in Lovelace card
+
+Person Tracker PRO 0.2.2 includes its own Lovelace card. The card is automatically registered by the integration, so no manual JavaScript resource or external frontend dependency is required.
+
+In **Dashboard → Edit dashboard → Add card**, select **Person Tracker PRO**. The card has a graphical editor where you can select:
+
+- fused location entity;
+- confidence, GPS accuracy and speed sensors;
+- active sources and rejected-samples sensors;
+- moving, stale and offline binary sensors;
+- map visibility, map history and zoom;
+- history display.
+
+The card uses Home Assistant's native map implementation and follows the active HA theme.
+
+A standard-card dashboard example remains available at:
+
+`docs/lovelace/person_tracker_pro.yaml`
 
 ## Privacy modes
 
@@ -97,14 +118,6 @@ The integration creates a device containing:
 - Moving binary sensor.
 
 Entity names are translated in English, Polish, Russian and Ukrainian.
-
-## Lovelace dashboard
-
-A dependency-free dashboard example is included at:
-
-`docs/lovelace/person_tracker_pro.yaml`
-
-It uses only standard Home Assistant cards: entity, map, grid, entities, markdown and history-graph. Before importing it, replace the clearly marked placeholder entity IDs with the actual entities created by your installation. No Mushroom or other custom frontend card is required.
 
 ## Services
 
@@ -190,4 +203,4 @@ For custom integrations, user-facing localization is stored under `custom_compon
 
 ## Project status
 
-The current `v0.2.1` branch is the production-oriented modernization track. The remaining roadmap focuses on advanced route/ETA functionality, adaptive tracking commands and richer Home Assistant automation triggers.
+The current release is `v0.2.2`, adding a built-in graphical Lovelace card and fully visual configuration/options controls. The remaining roadmap focuses on advanced route/ETA functionality, adaptive tracking commands and richer Home Assistant automation triggers.
