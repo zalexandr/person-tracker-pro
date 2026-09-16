@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
+from homeassistant.components.frontend import add_extra_js_url
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
@@ -33,9 +36,17 @@ PRIVACY_SCHEMA = vol.Schema(
     }
 )
 
+CARD_URL = "/api/person_tracker_pro/person-tracker-pro-card.js"
+CARD_PATH = Path(__file__).parent / "www" / "person-tracker-pro-card.js"
+
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
-    """Set up the domain services once."""
+    """Set up the domain services and frontend card once."""
+    if CARD_PATH.is_file():
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(CARD_URL, str(CARD_PATH), cache_headers=True)]
+        )
+        add_extra_js_url(hass, CARD_URL)
 
     async def _targets(
         call: ServiceCall,
