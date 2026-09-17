@@ -38,7 +38,7 @@ PRIVACY_SCHEMA = vol.Schema(
 
 # The card is bundled with the integration. A versioned URL avoids stale browser
 # caches after an integration update while keeping the resource self-contained.
-CARD_VERSION = "0.2.2"
+CARD_VERSION = "0.2.3"
 CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card.js?v={CARD_VERSION}"
 CARD_PATH = Path(__file__).parent / "www" / "person-tracker-pro-card.js"
 
