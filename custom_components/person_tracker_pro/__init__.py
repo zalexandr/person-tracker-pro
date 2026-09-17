@@ -47,7 +47,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the domain services and frontend card once."""
     if CARD_PATH.is_file():
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False)]
+            [
+                StaticPathConfig(
+                    CARD_URL.split("?", 1)[0],
+                    str(CARD_PATH),
+                    cache_headers=False,
+                )
+            ]
         )
         add_extra_js_url(hass, CARD_URL)
 
