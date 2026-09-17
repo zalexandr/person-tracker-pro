@@ -36,7 +36,10 @@ PRIVACY_SCHEMA = vol.Schema(
     }
 )
 
-CARD_URL = "/api/person_tracker_pro/person-tracker-pro-card.js"
+# The card is bundled with the integration. A versioned URL avoids stale browser
+# caches after an integration update while keeping the resource self-contained.
+CARD_VERSION = "0.2.2"
+CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card.js?v={CARD_VERSION}"
 CARD_PATH = Path(__file__).parent / "www" / "person-tracker-pro-card.js"
 
 
@@ -44,7 +47,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up the domain services and frontend card once."""
     if CARD_PATH.is_file():
         await hass.http.async_register_static_paths(
-            [StaticPathConfig(CARD_URL, str(CARD_PATH), cache_headers=True)]
+            [StaticPathConfig(CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False)]
         )
         add_extra_js_url(hass, CARD_URL)
 
