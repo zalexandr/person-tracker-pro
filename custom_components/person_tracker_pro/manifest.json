@@ -3,6 +3,7 @@
   "name": "Person Tracker PRO",
   "codeowners": ["@zalexandr"],
   "config_flow": true,
+  "dependencies": ["http"],
   "documentation": "https://github.com/zalexandr/person-tracker-pro",
   "integration_type": "hub",
   "iot_class": "local_push",
