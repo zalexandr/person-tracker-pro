@@ -29,10 +29,15 @@ class PersonTrackerProCard extends HTMLElement {
   static getStubConfig() {
     return {
       location_entity: "",
+      sensor_entities: [],
+      binary_sensor_entities: [],
+      show_auto_device_sensors: true,
+      show_attributes: false,
       show_map: true,
       hours_to_show: 24,
       map_zoom: 14,
       show_history: true,
+      sensor_columns: 2,
     };
   }
 
@@ -45,36 +50,24 @@ class PersonTrackerProCard extends HTMLElement {
           selector: { entity: { domain: "device_tracker" } },
         },
         {
-          name: "confidence_entity",
-          selector: { entity: { domain: "sensor" } },
+          name: "sensor_entities",
+          selector: {
+            entity: { domain: "sensor", multiple: true },
+          },
         },
         {
-          name: "accuracy_entity",
-          selector: { entity: { domain: "sensor" } },
+          name: "binary_sensor_entities",
+          selector: {
+            entity: { domain: "binary_sensor", multiple: true },
+          },
         },
         {
-          name: "speed_entity",
-          selector: { entity: { domain: "sensor" } },
+          name: "show_auto_device_sensors",
+          selector: { boolean: {} },
         },
         {
-          name: "sources_entity",
-          selector: { entity: { domain: "sensor" } },
-        },
-        {
-          name: "rejected_entity",
-          selector: { entity: { domain: "sensor" } },
-        },
-        {
-          name: "moving_entity",
-          selector: { entity: { domain: "binary_sensor" } },
-        },
-        {
-          name: "stale_entity",
-          selector: { entity: { domain: "binary_sensor" } },
-        },
-        {
-          name: "offline_entity",
-          selector: { entity: { domain: "binary_sensor" } },
+          name: "show_attributes",
+          selector: { boolean: {} },
         },
         { name: "show_map", selector: { boolean: {} } },
         {
@@ -90,21 +83,24 @@ class PersonTrackerProCard extends HTMLElement {
           },
         },
         { name: "show_history", selector: { boolean: {} } },
+        {
+          name: "sensor_columns",
+          selector: {
+            number: { min: 1, max: 4, step: 1, mode: "slider" },
+          },
+        },
       ],
       computeLabel: (schema) => ({
         location_entity: "Location entity",
-        confidence_entity: "Presence confidence",
-        accuracy_entity: "GPS accuracy",
-        speed_entity: "Speed",
-        sources_entity: "Active sources",
-        rejected_entity: "Rejected GPS samples",
-        moving_entity: "Moving",
-        stale_entity: "Location stale",
-        offline_entity: "Location offline",
+        sensor_entities: "Additional sensors",
+        binary_sensor_entities: "Additional binary sensors",
+        show_auto_device_sensors: "Automatically show device sensors",
+        show_attributes: "Show sensor attributes",
         show_map: "Show map",
         hours_to_show: "Map history (hours)",
         map_zoom: "Map zoom",
         show_history: "Show history",
+        sensor_columns: "Sensor columns",
       })[schema.name],
     };
   }
@@ -125,6 +121,54 @@ class PersonTrackerProCard extends HTMLElement {
     return this._config?.[configKey] || this._autoEntity(domain, suffix);
   }
 
+  _deviceId(entityId) {
+    return this._hass?.entities?.[entityId]?.device_id;
+  }
+
+  _discoverDeviceEntities() {
+    if (!this._hass || this._config?.show_auto_device_sensors === false) return [];
+
+    const locationEntity = this._config?.location_entity;
+    const locationDeviceId = this._deviceId(locationEntity);
+    if (!locationDeviceId || !this._hass.entities) return [];
+
+    return Object.entries(this._hass.entities)
+      .filter(([entityId, registry]) => {
+        const domain = entityId.split(".")[0];
+        return (
+          (domain === "sensor" || domain === "binary_sensor") &&
+          registry?.device_id === locationDeviceId &&
+          this._hass.states[entityId]
+        );
+      })
+      .map(([entityId]) => entityId);
+  }
+
+  _configuredSensorEntities() {
+    const configured = [
+      ...(Array.isArray(this._config?.sensor_entities)
+        ? this._config.sensor_entities
+        : this._config?.sensor_entities
+          ? [this._config.sensor_entities]
+          : []),
+      ...(Array.isArray(this._config?.binary_sensor_entities)
+        ? this._config.binary_sensor_entities
+        : this._config?.binary_sensor_entities
+          ? [this._config.binary_sensor_entities]
+          : []),
+    ];
+    return configured.filter((entityId) => this._state(entityId));
+  }
+
+  _allExtraEntities() {
+    const configured = this._configuredSensorEntities();
+    const discovered = this._discoverDeviceEntities();
+    return [...new Set([...configured, ...discovered])].filter((entityId) => {
+      const domain = entityId.split(".")[0];
+      return domain === "sensor" || domain === "binary_sensor";
+    });
+  }
+
   _value(entityId, fallback = "—") {
     const state = this._state(entityId);
     if (!state) return fallback;
@@ -135,7 +179,40 @@ class PersonTrackerProCard extends HTMLElement {
   _binary(entityId) {
     const state = this._state(entityId);
     if (!state) return "—";
-    return state.state === "on" ? "Yes" : "No";
+    return state.state === "on" ? "On" : "Off";
+  }
+
+  _friendlyName(entityId) {
+    const state = this._state(entityId);
+    return state?.attributes?.friendly_name || entityId;
+  }
+
+  _icon(entityId) {
+    const state = this._state(entityId);
+    if (state?.attributes?.icon) return state.attributes.icon;
+    return entityId.startsWith("binary_sensor.")
+      ? "mdi:checkbox-marked-circle-outline"
+      : "mdi:chart-line";
+  }
+
+  _attributes(entityId) {
+    const state = this._state(entityId);
+    if (!state?.attributes) return "";
+    const ignored = new Set([
+      "friendly_name",
+      "unit_of_measurement",
+      "icon",
+      "device_class",
+      "state_class",
+      "last_reset",
+    ]);
+    const entries = Object.entries(state.attributes).filter(
+      ([key, value]) => !ignored.has(key) && value !== undefined && value !== null && typeof value !== "object",
+    );
+    if (!entries.length) return "";
+    return `<div class="attributes">${entries
+      .map(([key, value]) => `<div>${this._escape(key)}: ${this._escape(value)}</div>`)
+      .join("")}</div>`;
   }
 
   async _renderMap(host, config) {
@@ -161,32 +238,50 @@ class PersonTrackerProCard extends HTMLElement {
     }
   }
 
+  _renderExtraSensors() {
+    const entities = this._allExtraEntities();
+    if (!entities.length) return "";
+
+    const columns = Math.min(4, Math.max(1, Number(this._config?.sensor_columns || 2)));
+    const showAttributes = this._config?.show_attributes === true;
+
+    return `
+      <div class="extra-title">Device data</div>
+      <div class="sensor-grid" style="--sensor-columns:${columns}">
+        ${entities
+          .map((entityId) => {
+            const state = this._state(entityId);
+            const domain = entityId.split(".")[0];
+            const value = domain === "binary_sensor" ? this._binary(entityId) : this._value(entityId);
+            const stateClass = state?.state === "unavailable" || state?.state === "unknown" ? " muted" : "";
+            return `
+              <div class="sensor-item${stateClass}">
+                <ha-icon icon="${this._escape(this._icon(entityId))}"></ha-icon>
+                <div class="sensor-main">
+                  <div class="label">${this._escape(this._friendlyName(entityId))}</div>
+                  <div class="value">${this._escape(value)}</div>
+                  ${showAttributes ? this._attributes(entityId) : ""}
+                </div>
+              </div>`;
+          })
+          .join("")}
+      </div>`;
+  }
+
   _render() {
     if (!this._hass || !this._config) return;
 
     const c = this._config;
     const location = this._state(c.location_entity);
     const attrs = location?.attributes || {};
-    const confidence = this._entity(
-      "confidence_entity",
-      "sensor",
-      "presence_confidence",
-    );
+    const confidence = this._entity("confidence_entity", "sensor", "presence_confidence");
     const accuracy = this._entity("accuracy_entity", "sensor", "gps_accuracy");
     const speed = this._entity("speed_entity", "sensor", "speed");
     const sources = this._entity("sources_entity", "sensor", "active_sources");
-    const rejected = this._entity(
-      "rejected_entity",
-      "sensor",
-      "rejected_gps_samples",
-    );
+    const rejected = this._entity("rejected_entity", "sensor", "rejected_gps_samples");
     const moving = this._entity("moving_entity", "binary_sensor", "moving");
     const stale = this._entity("stale_entity", "binary_sensor", "location_stale");
-    const offline = this._entity(
-      "offline_entity",
-      "binary_sensor",
-      "location_offline",
-    );
+    const offline = this._entity("offline_entity", "binary_sensor", "location_offline");
 
     const showMap =
       c.show_map !== false &&
@@ -208,9 +303,7 @@ class PersonTrackerProCard extends HTMLElement {
       <ha-card>
         <div class="header">
           <ha-icon icon="mdi:map-marker-account"></ha-icon>
-          <div class="title">${this._escape(
-            location?.attributes?.friendly_name || "Person Tracker PRO",
-          )}</div>
+          <div class="title">${this._escape(location?.attributes?.friendly_name || "Person Tracker PRO")}</div>
           <div class="state">${this._escape(location?.state || "unknown")}</div>
         </div>
         ${showMap ? '<div class="map" id="tracker-map"></div>' : ""}
@@ -223,6 +316,7 @@ class PersonTrackerProCard extends HTMLElement {
             )
             .join("")}
         </div>
+        ${this._renderExtraSensors()}
         <div class="footer">
           <span>${this._escape(attrs.zone || location?.state || "Unknown zone")}</span>
           ${attrs.last_update ? `<span>Updated ${this._escape(attrs.last_update)}</span>` : ""}
@@ -269,8 +363,17 @@ class PersonTrackerProCard extends HTMLElement {
       .metric { padding: 12px; background: var(--card-background-color); }
       .label { font-size: 12px; color: var(--secondary-text-color); }
       .value { margin-top: 4px; font-size: 16px; font-weight: 500; }
+      .extra-title { padding: 14px 16px 8px; font-size: 13px; font-weight: 600; color: var(--secondary-text-color); }
+      .sensor-grid { display: grid; grid-template-columns: repeat(var(--sensor-columns), minmax(0, 1fr)); gap: 1px; background: var(--divider-color); }
+      .sensor-item { display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: var(--card-background-color); min-width: 0; }
+      .sensor-item ha-icon { color: var(--primary-color); flex: 0 0 auto; }
+      .sensor-main { min-width: 0; }
+      .sensor-item .value { overflow-wrap: anywhere; }
+      .muted { opacity: 0.6; }
+      .attributes { margin-top: 6px; font-size: 11px; line-height: 1.4; color: var(--secondary-text-color); overflow-wrap: anywhere; }
       .footer { display: flex; justify-content: space-between; gap: 12px; padding: 12px 16px; color: var(--secondary-text-color); font-size: 12px; }
-      @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 700px) { .grid, .sensor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 420px) { .grid, .sensor-grid { grid-template-columns: 1fr; } }
     `;
     this.prepend(style);
   }
@@ -285,7 +388,7 @@ if (!window.customCards.some((card) => card.type === "person-tracker-pro-card"))
   window.customCards.push({
     type: "person-tracker-pro-card",
     name: "Person Tracker PRO",
-    description: "Location, confidence, GPS, movement and status in one card.",
+    description: "Location, integration metrics and selectable device sensor data in one card.",
     preview: true,
     documentationURL: "https://github.com/zalexandr/person-tracker-pro",
     getEntitySuggestion: (hass, entityId) => {
@@ -300,10 +403,15 @@ if (!window.customCards.some((card) => card.type === "person-tracker-pro-card"))
         config: {
           type: "custom:person-tracker-pro-card",
           location_entity: entityId,
+          sensor_entities: [],
+          binary_sensor_entities: [],
+          show_auto_device_sensors: true,
+          show_attributes: false,
           show_map: true,
           hours_to_show: 24,
           map_zoom: 14,
           show_history: true,
+          sensor_columns: 2,
         },
       };
     },
