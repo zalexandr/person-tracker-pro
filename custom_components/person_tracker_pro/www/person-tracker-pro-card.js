@@ -1,37 +1,45 @@
 // Compatibility loader for older Lovelace resource URLs.
 (() => {
-  const src = '/api/person_tracker_pro/person-tracker-pro-card-v2.js?v=0.4.2';
+  const CARD = 'person-tracker-pro-card';
+  const V2 = 'person-tracker-pro-card-v2';
+  const SRC = '/api/person_tracker_pro/person-tracker-pro-card-v2.js?v=0.4.3';
+
+  window.customCards = window.customCards || [];
+  if (!window.customCards.some((item) => item.type === CARD)) {
+    window.customCards.push({
+      type: CARD,
+      name: 'Person Tracker PRO GPS Tracker',
+      description: 'GPS tracker card',
+      preview: true,
+      getEntitySuggestion: (hass, entityId) => entityId?.startsWith('device_tracker.')
+        ? { type: `custom:${CARD}`, location_entity: entityId }
+        : null,
+    });
+  }
+
   const finish = () => {
-    if (!customElements.get('person-tracker-pro-card')) {
-      const Base = customElements.get('person-tracker-pro-card-v2');
-      if (Base) customElements.define('person-tracker-pro-card', class extends Base {});
+    if (!customElements.get(CARD)) {
+      const Base = customElements.get(V2);
+      if (Base) customElements.define(CARD, class extends Base {});
     }
-    window.customCards = window.customCards || [];
-    if (!window.customCards.some((x) => x.type === 'person-tracker-pro-card')) {
-      window.customCards.push({
-        type: 'person-tracker-pro-card',
-        name: 'Person Tracker PRO GPS Tracker',
-        description: 'GPS tracker card',
-        preview: false,
-        getEntitySuggestion: (hass, entityId) => entityId?.startsWith('device_tracker.')
-          ? { config: { type: 'custom:person-tracker-pro-card', location_entity: entityId } }
-          : null,
-      });
-    }
+    window.dispatchEvent(new Event('custom-cards-updated'));
   };
-  if (customElements.get('person-tracker-pro-card-v2')) {
+
+  if (customElements.get(V2)) {
     finish();
     return;
   }
+
   const existing = [...document.scripts].find((s) => s.src.includes('person-tracker-pro-card-v2.js'));
   if (existing) {
-    customElements.whenDefined('person-tracker-pro-card-v2').then(finish).catch((e) => console.error('Person Tracker PRO:', e));
+    customElements.whenDefined(V2).then(finish).catch((e) => console.error('Person Tracker PRO:', e));
     return;
   }
+
   const script = document.createElement('script');
-  script.src = src;
+  script.src = SRC;
   script.async = false;
-  script.onload = () => customElements.whenDefined('person-tracker-pro-card-v2').then(finish).catch((e) => console.error('Person Tracker PRO:', e));
-  script.onerror = (e) => console.error('Person Tracker PRO card load failed', e);
+  script.onload = () => customElements.whenDefined(V2).then(finish).catch((e) => console.error('Person Tracker PRO:', e));
+  script.onerror = () => console.error(`Person Tracker PRO card load failed: ${SRC}`);
   document.head.appendChild(script);
 })();
