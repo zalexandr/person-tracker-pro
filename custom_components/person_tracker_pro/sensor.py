@@ -21,6 +21,12 @@ async def async_setup_entry(hass: Any, entry: Any, async_add_entities: Any) -> N
         SpeedSensor(coordinator, entry.entry_id),
         SourceCountSensor(coordinator, entry.entry_id),
         RejectedSensor(coordinator, entry.entry_id),
+        DistanceHomeSensor(coordinator, entry.entry_id),
+        LatitudeSensor(coordinator, entry.entry_id),
+        LongitudeSensor(coordinator, entry.entry_id),
+        CourseSensor(coordinator, entry.entry_id),
+        ZoneSensor(coordinator, entry.entry_id),
+        SourceSensor(coordinator, entry.entry_id),
     ]
     battery_entity = entry.data.get(CONF_BATTERY_ENTITY)
     if battery_entity:
@@ -110,6 +116,103 @@ class RejectedSensor(BaseSensor):
     @property
     def native_value(self) -> int:
         return self.coordinator.data.rejected_samples
+
+
+class DistanceHomeSensor(BaseSensor):
+    """Distance from the configured home zone."""
+
+    _attr_name = "Distance home"
+    _attr_device_class = SensorDeviceClass.DISTANCE
+    _attr_native_unit_of_measurement = UnitOfLength.METERS
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:home-map-marker"
+
+    def __init__(self, c: Any, e: str) -> None:
+        super().__init__(c, f"{e}_distance_home")
+
+    @property
+    def native_value(self) -> float | None:
+        value = self.coordinator.data.distance_home
+        return round(value, 1) if value is not None else None
+
+
+class LatitudeSensor(BaseSensor):
+    """Current fused latitude."""
+
+    _attr_name = "Latitude"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:latitude"
+
+    def __init__(self, c: Any, e: str) -> None:
+        super().__init__(c, f"{e}_latitude")
+
+    @property
+    def native_value(self) -> float | None:
+        sample = self.coordinator.data.sample
+        return round(sample.latitude, 6) if sample else None
+
+
+class LongitudeSensor(BaseSensor):
+    """Current fused longitude."""
+
+    _attr_name = "Longitude"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:longitude"
+
+    def __init__(self, c: Any, e: str) -> None:
+        super().__init__(c, f"{e}_longitude")
+
+    @property
+    def native_value(self) -> float | None:
+        sample = self.coordinator.data.sample
+        return round(sample.longitude, 6) if sample else None
+
+
+class CourseSensor(BaseSensor):
+    """Current travel direction in degrees."""
+
+    _attr_name = "Course"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:compass-outline"
+
+    def __init__(self, c: Any, e: str) -> None:
+        super().__init__(c, f"{e}_course")
+
+    @property
+    def native_value(self) -> float | None:
+        sample = self.coordinator.data.sample
+        return round(sample.course, 1) if sample and sample.course is not None else None
+
+
+class ZoneSensor(BaseSensor):
+    """Current resolved zone."""
+
+    _attr_name = "Current zone"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:map-marker-radius"
+
+    def __init__(self, c: Any, e: str) -> None:
+        super().__init__(c, f"{e}_zone")
+
+    @property
+    def native_value(self) -> str | None:
+        return self.coordinator.data.zone
+
+
+class SourceSensor(BaseSensor):
+    """Source used for the current fused location."""
+
+    _attr_name = "Location source"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:source-branch"
+
+    def __init__(self, c: Any, e: str) -> None:
+        super().__init__(c, f"{e}_source")
+
+    @property
+    def native_value(self) -> str | None:
+        sample = self.coordinator.data.sample
+        return sample.source if sample else None
 
 
 class BatterySensor(BaseSensor):
