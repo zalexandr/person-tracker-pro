@@ -1,35 +1,45 @@
 (() => {
-  const load = () => new Promise((resolve, reject) => {
-    const src = '/api/person_tracker_pro/person-tracker-pro-card-v2.js?v=0.4.1';
-    const existing = [...document.scripts].find(s => s.src.includes('person-tracker-pro-card-v2.js'));
-    if (existing) {
-      customElements.whenDefined('person-tracker-pro-card-v2').then(resolve).catch(reject);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = false;
-    script.onload = () => customElements.whenDefined('person-tracker-pro-card-v2').then(resolve).catch(reject);
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-  load().then(() => {
-    if (!customElements.get('person-tracker-pro-card')) {
-      const Base = customElements.get('person-tracker-pro-card-v2');
-      class PersonTrackerProCardAlias extends Base {}
-      customElements.define('person-tracker-pro-card', PersonTrackerProCardAlias);
+  const CARD = 'person-tracker-pro-card';
+  const V2 = 'person-tracker-pro-card-v2';
+  const SRC = '/api/person_tracker_pro/person-tracker-pro-card-v2.js?v=0.4.2';
+
+  const register = () => {
+    if (!customElements.get(CARD)) {
+      const Base = customElements.get(V2);
+      if (Base) {
+        class PersonTrackerProCardAlias extends Base {}
+        customElements.define(CARD, PersonTrackerProCardAlias);
+      }
     }
     window.customCards = window.customCards || [];
-    if (!window.customCards.some(x => x.type === 'person-tracker-pro-card')) {
+    if (!window.customCards.some((item) => item.type === CARD)) {
       window.customCards.push({
-        type: 'person-tracker-pro-card',
+        type: CARD,
         name: 'Person Tracker PRO GPS Tracker',
-        description: 'Stable GPS tracker card',
+        description: 'GPS tracker card',
         preview: false,
         getEntitySuggestion: (hass, entityId) => entityId?.startsWith('device_tracker.')
-          ? { type: 'custom:person-tracker-pro-card', location_entity: entityId }
+          ? { type: `custom:${CARD}`, location_entity: entityId }
           : null,
       });
     }
-  }).catch(err => console.error('Person Tracker PRO card loader:', err));
+  };
+
+  const load = () => {
+    if (customElements.get(V2)) return Promise.resolve();
+    const existing = [...document.scripts].find((s) => s.src.includes(V2));
+    if (existing) return customElements.whenDefined(V2);
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = SRC;
+      script.onload = () => customElements.whenDefined(V2).then(resolve).catch(reject);
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  };
+
+  load().then(() => {
+    register();
+    window.dispatchEvent(new Event('custom-cards-updated'));
+  }).catch((error) => console.error('Person Tracker PRO card loader:', error));
 })();
