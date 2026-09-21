@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, EventStateChangedData, HomeAssistant
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .confidence import calculate_confidence
@@ -43,6 +44,7 @@ from .models import LocationSample, LocationState
 from .movement import classify_speed
 
 _LOGGER = logging.getLogger(__name__)
+UPDATE_INTERVAL = timedelta(seconds=5)
 
 
 class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
@@ -71,7 +73,17 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         self._pending_zone_since: datetime | None = None
         self._previous_movement = Movement.UNKNOWN
         self._previous_stale: bool | None = None
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=None)
+        self._unsub_source_listener = None
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=UPDATE_INTERVAL,
+            always_update=True,
+        )
+        self._unsub_source_listener = async_track_state_change_event(
+            hass, self.source_entities, self._async_source_changed
+        )
 
     @property
     def person_entity(self) -> str:
@@ -91,6 +103,12 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
         except ValueError:
             _LOGGER.warning("Unknown privacy mode; falling back to full")
             return PrivacyMode.FULL
+
+    async def _async_source_changed(self, event: Event[EventStateChangedData]) -> None:
+        """Refresh immediately when a configured GPS source changes."""
+        if event.data.get("new_state") is None:
+            return
+        await self.async_refresh()
 
     def _read_samples(self) -> tuple[list[LocationSample], dict[str, str]]:
         samples: list[LocationSample] = []
@@ -133,51 +151,34 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             self._pending_zone = None
             self._pending_zone_since = None
             return self._confirmed_zone
-
         if candidate != self._pending_zone:
             self._pending_zone = candidate
             self._pending_zone_since = now
             return self._confirmed_zone
-
         if self._pending_zone_since is None:
             self._pending_zone_since = now
             return self._confirmed_zone
-
         elapsed = (now - self._pending_zone_since).total_seconds()
         timeout = (
             float(self.config.get(CONF_EXIT_CONFIRMATION, DEFAULT_EXIT_CONFIRMATION))
             if self._confirmed_zone is not None
-            else float(
-                self.config.get(CONF_ENTER_CONFIRMATION, DEFAULT_ENTER_CONFIRMATION)
-            )
+            else float(self.config.get(CONF_ENTER_CONFIRMATION, DEFAULT_ENTER_CONFIRMATION))
         )
         if elapsed < timeout:
             return self._confirmed_zone
-
         old_zone = self._confirmed_zone
         self._confirmed_zone = candidate
         self._pending_zone = None
         self._pending_zone_since = None
         if old_zone is not None and old_zone != candidate:
-            self.hass.bus.async_fire(
-                EVENT_LEFT_ZONE,
-                {"person": self.person_entity, "zone": old_zone},
-            )
+            self.hass.bus.async_fire(EVENT_LEFT_ZONE, {"person": self.person_entity, "zone": old_zone})
         if candidate is not None and candidate != old_zone:
-            self.hass.bus.async_fire(
-                EVENT_ENTERED_ZONE,
-                {"person": self.person_entity, "zone": candidate},
-            )
+            self.hass.bus.async_fire(EVENT_ENTERED_ZONE, {"person": self.person_entity, "zone": candidate})
         return self._confirmed_zone
 
-    def _fire_state_events(
-        self, movement: Movement, stale: bool, now: datetime
-    ) -> None:
+    def _fire_state_events(self, movement: Movement, stale: bool, now: datetime) -> None:
         """Fire movement and stale/recovered transition events."""
-        was_moving = self._previous_movement not in {
-            Movement.UNKNOWN,
-            Movement.STATIONARY,
-        }
+        was_moving = self._previous_movement not in {Movement.UNKNOWN, Movement.STATIONARY}
         is_moving = movement not in {Movement.UNKNOWN, Movement.STATIONARY}
         if self._previous_movement != Movement.UNKNOWN and is_moving != was_moving:
             self.hass.bus.async_fire(
@@ -207,33 +208,22 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             else:
                 self.rejected_samples += 1
                 status[sample.source] = "rejected"
-
         if accepted:
             sample = select_freshest_sample(accepted)
             self.previous = sample
         elif self.previous is not None:
             sample = self.previous
         else:
-            return LocationState(
-                source_status=status, rejected_samples=self.rejected_samples
-            )
-
+            return LocationState(source_status=status, rejected_samples=self.rejected_samples)
         now = datetime.now(timezone.utc)
         age = max(0.0, (now - sample.timestamp).total_seconds())
         home = self.hass.states.get(self.config.get(CONF_HOME_ZONE, DEFAULT_HOME_ZONE))
         distance_home = None
-        if (
-            home
-            and home.attributes.get("latitude") is not None
-            and home.attributes.get("longitude") is not None
-        ):
+        if home and home.attributes.get("latitude") is not None and home.attributes.get("longitude") is not None:
             distance_home = haversine_meters(
-                sample.latitude,
-                sample.longitude,
-                float(home.attributes["latitude"]),
-                float(home.attributes["longitude"]),
+                sample.latitude, sample.longitude,
+                float(home.attributes["latitude"]), float(home.attributes["longitude"]),
             )
-
         candidate_zone = None
         source_state = self.hass.states.get(sample.source)
         if source_state:
@@ -241,17 +231,13 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
             if candidate_zone is None and source_state.state not in {"unknown", "unavailable"}:
                 candidate_zone = source_state.state
         zone = self._confirm_zone(candidate_zone, now)
-
         movement = classify_speed(sample.speed_kmh)
         stale = age >= float(self.config[CONF_STALE_TIMEOUT])
         offline = age >= float(self.config[CONF_OFFLINE_TIMEOUT])
         self._fire_state_events(movement, stale, now)
-
         return LocationState(
             sample=sample,
-            confidence=calculate_confidence(
-                sample, now=now, corroborated=len(accepted) > 1
-            ),
+            confidence=calculate_confidence(sample, now=now, corroborated=len(accepted) > 1),
             movement=movement,
             zone=zone,
             distance_home=distance_home,
@@ -269,6 +255,12 @@ class PersonTrackerCoordinator(DataUpdateCoordinator[LocationState]):
     async def async_recalculate(self) -> None:
         """Recalculate presence immediately from current source states."""
         await self.async_refresh()
+
+    async def async_shutdown(self) -> None:
+        """Release coordinator listeners."""
+        if self._unsub_source_listener:
+            self._unsub_source_listener()
+            self._unsub_source_listener = None
 
 
 def select_freshest_sample(samples: list[LocationSample]) -> LocationSample:
