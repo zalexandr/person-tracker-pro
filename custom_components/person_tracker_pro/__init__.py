@@ -34,44 +34,35 @@ PRIVACY_SCHEMA = vol.Schema(
         vol.Optional("entry_id"): cv.string,
     }
 )
-CARD_VERSION = "0.4.0"
-CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card.js?v={CARD_VERSION}"
+CARD_VERSION = "0.4.1"
+CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-v2.js?v={CARD_VERSION}"
 WWW_PATH = Path(__file__).parent / "www"
-CARD_PATH = WWW_PATH / "person-tracker-pro-card.js"
+CARD_PATH = WWW_PATH / "person-tracker-pro-card-v2.js"
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up domain services and frontend resources."""
     if CARD_PATH.is_file():
         await hass.http.async_register_static_paths(
-            [
-                StaticPathConfig(
-                    CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False
-                )
-            ]
+            [StaticPathConfig(CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False)]
         )
         add_extra_js_url(hass, CARD_URL)
 
-    async def _targets(
-        call: ServiceCall,
-    ) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
+    async def _targets(call: ServiceCall) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
         entry_id = call.data.get("entry_id")
         for current_id, coordinator in hass.data.get(DOMAIN, {}).items():
             if not entry_id or current_id == entry_id:
                 yield current_id, coordinator
 
     async def request_location(call: ServiceCall) -> None:
-        """Request a fresh location calculation."""
         async for _, coordinator in _targets(call):
             await coordinator.async_request_location()
 
     async def recalculate(call: ServiceCall) -> None:
-        """Recalculate the fused location."""
         async for _, coordinator in _targets(call):
             await coordinator.async_recalculate()
 
     async def set_privacy(call: ServiceCall) -> None:
-        """Change privacy mode."""
         mode = call.data["mode"]
         async for entry_id, coordinator in _targets(call):
             coordinator.config[CONF_PRIVACY_MODE] = mode
@@ -82,20 +73,13 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 )
             await coordinator.async_refresh()
 
-    hass.services.async_register(
-        DOMAIN, SERVICE_REQUEST_LOCATION, request_location, schema=SERVICE_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_RECALCULATE, recalculate, schema=SERVICE_SCHEMA
-    )
-    hass.services.async_register(
-        DOMAIN, SERVICE_SET_PRIVACY, set_privacy, schema=PRIVACY_SCHEMA
-    )
+    hass.services.async_register(DOMAIN, SERVICE_REQUEST_LOCATION, request_location, schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_RECALCULATE, recalculate, schema=SERVICE_SCHEMA)
+    hass.services.async_register(DOMAIN, SERVICE_SET_PRIVACY, set_privacy, schema=PRIVACY_SCHEMA)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
-    """Set up an entry."""
     coordinator = PersonTrackerCoordinator(hass, {**entry.data, **entry.options})
     entry.runtime_data = coordinator
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
@@ -105,7 +89,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
-    """Unload an entry."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded:
         hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
