@@ -34,22 +34,37 @@ PRIVACY_SCHEMA = vol.Schema(
         vol.Optional("entry_id"): cv.string,
     }
 )
-CARD_VERSION = "0.2.9"
+CARD_VERSION = "0.3.0"
 CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card.js?v={CARD_VERSION}"
-CARD_PATH = Path(__file__).parent / "www" / "person-tracker-pro-card.js"
+ENHANCEMENTS_URL = f"/api/person_tracker_pro/person-tracker-pro-gps-enhancements.js?v={CARD_VERSION}"
+WWW_PATH = Path(__file__).parent / "www"
+CARD_PATH = WWW_PATH / "person-tracker-pro-card.js"
+ENHANCEMENTS_PATH = WWW_PATH / "person-tracker-pro-gps-enhancements.js"
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
-    """Set up domain services and frontend card."""
+    """Set up domain services and frontend resources."""
+    paths = []
     if CARD_PATH.is_file():
-        await hass.http.async_register_static_paths(
-            [
-                StaticPathConfig(
-                    CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False
-                )
-            ]
+        paths.append(
+            StaticPathConfig(
+                CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False
+            )
         )
+    if ENHANCEMENTS_PATH.is_file():
+        paths.append(
+            StaticPathConfig(
+                ENHANCEMENTS_URL.split("?", 1)[0],
+                str(ENHANCEMENTS_PATH),
+                cache_headers=False,
+            )
+        )
+    if paths:
+        await hass.http.async_register_static_paths(paths)
+    if CARD_PATH.is_file():
         add_extra_js_url(hass, CARD_URL)
+    if ENHANCEMENTS_PATH.is_file():
+        add_extra_js_url(hass, ENHANCEMENTS_URL)
 
     async def _targets(
         call: ServiceCall,
