@@ -34,10 +34,10 @@ PRIVACY_SCHEMA = vol.Schema(
         vol.Optional("entry_id"): cv.string,
     }
 )
-CARD_VERSION = "0.4.1"
-CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-v2.js?v={CARD_VERSION}"
+CARD_VERSION = "0.4.2"
+CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-loader.js?v={CARD_VERSION}"
 WWW_PATH = Path(__file__).parent / "www"
-CARD_PATH = WWW_PATH / "person-tracker-pro-card-v2.js"
+CARD_PATH = WWW_PATH / "person-tracker-pro-card-loader.js"
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
