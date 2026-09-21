@@ -29,7 +29,7 @@ type PersonTrackerConfigEntry = ConfigEntry[PersonTrackerCoordinator]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 SERVICE_SCHEMA = vol.Schema({vol.Optional("entry_id"): cv.string})
 PRIVACY_SCHEMA = vol.Schema({vol.Required("mode"): vol.In([mode.value for mode in PrivacyMode]), vol.Optional("entry_id"): cv.string})
-CARD_VERSION = "0.2.7"
+CARD_VERSION = "0.2.8"
 CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card.js?v={CARD_VERSION}"
 CARD_PATH = Path(__file__).parent / "www" / "person-tracker-pro-card.js"
 
