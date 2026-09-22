@@ -24,7 +24,6 @@ from .const import (
 )
 from .coordinator import PersonTrackerCoordinator
 
-
 type PersonTrackerConfigEntry = ConfigEntry[PersonTrackerCoordinator]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 SERVICE_SCHEMA = vol.Schema({vol.Optional("entry_id"): cv.string})
@@ -34,11 +33,10 @@ PRIVACY_SCHEMA = vol.Schema(
         vol.Optional("entry_id"): cv.string,
     }
 )
-CARD_VERSION = "0.4.4"
+CARD_VERSION = "0.4.6"
 CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-loader.js?v={CARD_VERSION}"
 WWW_PATH = Path(__file__).parent / "www"
 CARD_PATH = WWW_PATH / "person-tracker-pro-card-loader.js"
-
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up domain services and frontend resources."""
@@ -78,7 +76,6 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     hass.services.async_register(DOMAIN, SERVICE_SET_PRIVACY, set_privacy, schema=PRIVACY_SCHEMA)
     return True
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
     coordinator = PersonTrackerCoordinator(hass, {**entry.data, **entry.options})
     entry.runtime_data = coordinator
@@ -86,7 +83,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry
     await coordinator.async_config_entry_first_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
-
 
 async def async_unload_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
