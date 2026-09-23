@@ -33,7 +33,7 @@ PRIVACY_SCHEMA = vol.Schema(
         vol.Optional("entry_id"): cv.string,
     }
 )
-CARD_VERSION = "0.4.6"
+CARD_VERSION = "0.4.7"
 CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-loader.js?v={CARD_VERSION}"
 CARD_V2_URL = "/api/person_tracker_pro/person-tracker-pro-card-v2.js"
 WWW_PATH = Path(__file__).parent / "www"
