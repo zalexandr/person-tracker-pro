@@ -35,15 +35,34 @@ PRIVACY_SCHEMA = vol.Schema(
 )
 CARD_VERSION = "0.4.6"
 CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-loader.js?v={CARD_VERSION}"
+CARD_V2_URL = "/api/person_tracker_pro/person-tracker-pro-card-v2.js"
 WWW_PATH = Path(__file__).parent / "www"
-CARD_PATH = WWW_PATH / "person-tracker-pro-card-loader.js"
+CARD_LOADER_PATH = WWW_PATH / "person-tracker-pro-card-loader.js"
+CARD_V2_PATH = WWW_PATH / "person-tracker-pro-card-v2.js"
+
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up domain services and frontend resources."""
-    if CARD_PATH.is_file():
-        await hass.http.async_register_static_paths(
-            [StaticPathConfig(CARD_URL.split("?", 1)[0], str(CARD_PATH), cache_headers=False)]
+    static_paths: list[StaticPathConfig] = []
+    if CARD_LOADER_PATH.is_file():
+        static_paths.append(
+            StaticPathConfig(
+                CARD_URL.split("?", 1)[0],
+                str(CARD_LOADER_PATH),
+                cache_headers=False,
+            )
         )
+    if CARD_V2_PATH.is_file():
+        static_paths.append(
+            StaticPathConfig(
+                CARD_V2_URL,
+                str(CARD_V2_PATH),
+                cache_headers=False,
+            )
+        )
+    if static_paths:
+        await hass.http.async_register_static_paths(static_paths)
+    if CARD_LOADER_PATH.is_file():
         add_extra_js_url(hass, CARD_URL)
 
     async def _targets(call: ServiceCall) -> AsyncIterator[tuple[str, PersonTrackerCoordinator]]:
@@ -71,10 +90,26 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
                 )
             await coordinator.async_refresh()
 
-    hass.services.async_register(DOMAIN, SERVICE_REQUEST_LOCATION, request_location, schema=SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_RECALCULATE, recalculate, schema=SERVICE_SCHEMA)
-    hass.services.async_register(DOMAIN, SERVICE_SET_PRIVACY, set_privacy, schema=PRIVACY_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REQUEST_LOCATION,
+        request_location,
+        schema=SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RECALCULATE,
+        recalculate,
+        schema=SERVICE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_PRIVACY,
+        set_privacy,
+        schema=PRIVACY_SCHEMA,
+    )
     return True
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
     coordinator = PersonTrackerCoordinator(hass, {**entry.data, **entry.options})
@@ -83,6 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry
     await coordinator.async_config_entry_first_refresh()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: PersonTrackerConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
