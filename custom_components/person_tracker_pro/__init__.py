@@ -33,9 +33,10 @@ PRIVACY_SCHEMA = vol.Schema(
         vol.Optional("entry_id"): cv.string,
     }
 )
-CARD_VERSION = "0.4.7"
-CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-loader.js?v={CARD_VERSION}"
+CARD_VERSION = "0.4.8"
+CARD_URL = f"/api/person_tracker_pro/person-tracker-pro-card-v2.js?v={CARD_VERSION}"
 CARD_V2_URL = "/api/person_tracker_pro/person-tracker-pro-card-v2.js"
+CARD_LOADER_URL = "/api/person_tracker_pro/person-tracker-pro-card-loader.js"
 WWW_PATH = Path(__file__).parent / "www"
 CARD_LOADER_PATH = WWW_PATH / "person-tracker-pro-card-loader.js"
 CARD_V2_PATH = WWW_PATH / "person-tracker-pro-card-v2.js"
@@ -47,7 +48,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     if CARD_LOADER_PATH.is_file():
         static_paths.append(
             StaticPathConfig(
-                CARD_URL.split("?", 1)[0],
+                CARD_LOADER_URL,
                 str(CARD_LOADER_PATH),
                 cache_headers=False,
             )
