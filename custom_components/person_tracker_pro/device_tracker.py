@@ -62,6 +62,22 @@ class PersonTrackerTracker(PersonTrackerEntity, TrackerEntity):
         data = self.coordinator.data
         sample = data.sample
         privacy = self.coordinator.privacy_mode
+        source_diagnostics = {}
+        for entity_id in self.coordinator.source_entities:
+            state = self.coordinator.hass.states.get(entity_id)
+            source_diagnostics[entity_id] = {
+                "status": data.source_status.get(entity_id, "missing"),
+                "state": state.state if state else None,
+                "last_updated": state.last_updated.isoformat() if state else None,
+                "latitude": state.attributes.get("latitude") if state else None,
+                "longitude": state.attributes.get("longitude") if state else None,
+                "gps_accuracy": (
+                    state.attributes.get("gps_accuracy", state.attributes.get("accuracy"))
+                    if state
+                    else None
+                ),
+            }
+
         return {
             ATTR_ACCURACY: sample.accuracy if sample else None,
             ATTR_CONFIDENCE: data.confidence,
@@ -73,4 +89,6 @@ class PersonTrackerTracker(PersonTrackerEntity, TrackerEntity):
             ATTR_REJECTED: data.rejected_samples,
             ATTR_STALE: data.stale,
             ATTR_OFFLINE: data.offline,
+            "configured_sources": self.coordinator.source_entities,
+            "source_diagnostics": source_diagnostics,
         }
