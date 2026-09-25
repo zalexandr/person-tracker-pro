@@ -3,7 +3,7 @@ const PT_CSS=`:host{display:block}.pt{padding:0 14px 14px}.pt-head{display:flex;
 class PersonTrackerProCardV2 extends HTMLElement{
  connectedCallback(){this._ensureStyle()}
  _ensureStyle(){if(this.querySelector('style[data-pt]'))return;const s=document.createElement('style');s.dataset.pt='';s.textContent=PT_CSS;this.appendChild(s)}
- setConfig(c){this._config={show_map:true,show_tracker_details:true,show_auto_device_sensors:true,hide_unavailable:true,language:'auto',...(c||{})};this._render()}
+ setConfig(c){this._config={show_map:true,map_zoom:15,show_tracker_details:true,show_auto_device_sensors:true,hide_unavailable:true,language:'auto',...(c||{})};this._render()}
  set hass(h){this._hass=h;this._render()}
  getCardSize(){return 6}
  getGridOptions(){return{columns:12,min_columns:6,rows:6,min_rows:4}}
