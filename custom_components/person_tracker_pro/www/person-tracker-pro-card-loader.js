@@ -1,6 +1,6 @@
 (() => {
   const CARD = 'person-tracker-pro-card';
-  const SRC = '/api/person_tracker_pro/person-tracker-pro-card-v2.js?v=0.5.5';
+  const SRC = '/api/person_tracker_pro/person-tracker-pro-card-v2.js?v=0.5.6';
 
   window.customCards = window.customCards || [];
   if (!window.customCards.some((item) => item.type === CARD)) {
